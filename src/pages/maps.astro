@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import maps from '../data/maps.json';
+---
+<Base title="Maps — TarkovDB" active="maps">
+  <h1 class="text-lg font-semibold mb-4">Maps</h1>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {(maps as any[]).map((m) => (
+      <div class="bg-bg-elev border border-bg-border rounded p-4">
+        <div class="flex items-start justify-between mb-2">
+          <h2 class="text-base font-semibold">{m.name}</h2>
+          <div class="text-xs text-text-mute">{m.players} players · {Math.round((m.raidDuration||0)/60)}min</div>
+        </div>
+        {m.description && <p class="text-sm text-text-dim mb-3">{m.description}</p>}
+        {m.enemies && m.enemies.length > 0 && (
+          <div class="mb-2">
+            <div class="text-xs text-text-mute mb-1">Hostiles</div>
+            <div class="flex flex-wrap gap-1">
+              {m.enemies.map((e: string) => <span class="text-xs px-2 py-0.5 bg-bg-card rounded">{e}</span>)}
+            </div>
+          </div>
+        )}
+        {m.wiki && <a href={m.wiki} target="_blank" rel="noopener" class="text-xs text-accent hover:underline">wiki ↗</a>}
+      </div>
+    ))}
+  </div>
+</Base>

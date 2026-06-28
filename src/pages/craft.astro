@@ -1,0 +1,115 @@
+---
+import Base from '../layouts/Base.astro';
+import crafts from '../data/crafts.json';
+import items from '../data/items.json';
+
+const itemPrice: Record<string, number> = {};
+for (const it of items as any[]) itemPrice[it.id] = it.a24 || it.llp || it.bp || 0;
+
+const annotated = (crafts as any[]).map((c) => {
+  const cost = c.requiredItems.reduce((s: number, r: any) => s + (itemPrice[r.item.id] || 0) * r.count, 0);
+  const value = c.rewardItems.reduce((s: number, r: any) => s + (itemPrice[r.item.id] || 0) * r.count, 0);
+  const profit = value - cost;
+  const profitPerHour = c.duration ? profit / (c.duration / 3600) : 0;
+  return { ...c, _cost: cost, _value: value, _profit: profit, _pph: profitPerHour };
+});
+annotated.sort((a, b) => b._pph - a._pph);
+
+const stations = Array.from(new Set(annotated.map((c) => c.station.normalizedName))).sort();
+---
+<Base title="Craft — TarkovDB" active="craft">
+  <div class="flex items-center gap-2 mb-3 flex-wrap">
+    <input id="filter" type="text" placeholder="Filter by item name…"
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+    <select id="stationFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+      <option value="">All stations</option>
+      {stations.map((s) => <option value={s}>{s.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>)}
+    </select>
+    <select id="sortBy" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+      <option value="pph">₽ / hour ↓</option>
+      <option value="profit">Total profit ↓</option>
+      <option value="value">Reward value ↓</option>
+      <option value="duration">Duration ↑</option>
+    </select>
+    <div class="text-xs text-text-mute ml-auto">{annotated.length} crafts</div>
+  </div>
+
+  <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+    <div class="grid grid-cols-[170px_1fr_40px_1fr_90px_100px_100px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
+      <div class="px-2 py-2">Station · LV · Dur.</div>
+      <div class="px-2 py-2">Cost</div>
+      <div class="px-2 py-2"></div>
+      <div class="px-2 py-2">Reward</div>
+      <div class="px-2 py-2 text-right">Cost ₽</div>
+      <div class="px-2 py-2 text-right">Profit ₽</div>
+      <div class="px-2 py-2 text-right">₽/h</div>
+    </div>
+    <div id="rows">
+      {annotated.map((c) => {
+        const hrs = Math.floor(c.duration / 3600);
+        const mins = Math.floor((c.duration % 3600) / 60);
+        const durStr = hrs > 0 ? `${hrs}h${mins}m` : `${mins}m`;
+        return (
+        <div class="craft-row grid grid-cols-[170px_1fr_40px_1fr_90px_100px_100px] border-b border-bg-border row-hover text-sm py-1"
+             data-station={c.station.normalizedName}
+             data-name={(c.requiredItems.concat(c.rewardItems).map((r: any) => r.item.shortName + ' ' + r.item.name).join(' ')).toLowerCase()}
+             data-pph={c._pph} data-profit={c._profit} data-value={c._value} data-duration={c.duration}>
+          <div class="px-2 py-2 text-text-dim text-xs">
+            <div class="capitalize">{c.station.normalizedName.replace(/-/g, ' ')} <span class="text-accent">L{c.level}</span></div>
+            <div class="text-text-mute">{durStr}</div>
+          </div>
+          <div class="px-2 py-2 flex items-center gap-1 flex-wrap">
+            {c.requiredItems.map((r: any) => (
+              <a href={`/item/${r.item.id}/`} class="flex items-center gap-1 px-1.5 py-0.5 bg-bg-card rounded text-xs">
+                <img src={r.item.iconLink} class="w-5 h-5 object-contain" loading="lazy" />
+                <span class="truncate max-w-[110px]">{r.item.shortName}</span>
+                <span class="text-text-mute">×{r.count}</span>
+              </a>
+            ))}
+          </div>
+          <div class="px-2 py-2 text-text-mute flex items-center">→</div>
+          <div class="px-2 py-2 flex items-center gap-1 flex-wrap">
+            {c.rewardItems.map((r: any) => (
+              <a href={`/item/${r.item.id}/`} class="flex items-center gap-1 px-1.5 py-0.5 bg-bg-card rounded text-xs">
+                <img src={r.item.iconLink} class="w-5 h-5 object-contain" loading="lazy" />
+                <span class="text-accent truncate max-w-[110px]">{r.item.shortName}</span>
+                <span class="text-text-mute">×{r.count}</span>
+              </a>
+            ))}
+          </div>
+          <div class="px-2 py-2 text-right text-num text-text-dim">{Math.round(c._cost).toLocaleString()}</div>
+          <div class={`px-2 py-2 text-right text-num font-semibold ${c._profit > 0 ? 'up' : 'down'}`}>{c._profit > 0 ? '+' : ''}{Math.round(c._profit).toLocaleString()}</div>
+          <div class={`px-2 py-2 text-right text-num ${c._pph > 0 ? 'up' : 'down'}`}>{Math.round(c._pph).toLocaleString()}</div>
+        </div>
+      )})}
+    </div>
+  </div>
+
+  <script>
+    const filter = document.getElementById('filter') as HTMLInputElement;
+    const sSel = document.getElementById('stationFilter') as HTMLSelectElement;
+    const oSel = document.getElementById('sortBy') as HTMLSelectElement;
+    const container = document.getElementById('rows')!;
+    function apply() {
+      const q = filter.value.trim().toLowerCase();
+      const st = sSel.value;
+      const rows = Array.from(container.querySelectorAll<HTMLElement>('.craft-row'));
+      rows.forEach((r) => {
+        const okName = !q || (r.dataset.name || '').includes(q);
+        const okSt = !st || r.dataset.station === st;
+        r.style.display = (okName && okSt) ? '' : 'none';
+      });
+      const key = oSel.value;
+      const asc = key === 'duration';
+      const sorted = rows.slice().sort((a, b) => {
+        const av = parseFloat(a.dataset[key as any] || '0');
+        const bv = parseFloat(b.dataset[key as any] || '0');
+        return asc ? av - bv : bv - av;
+      });
+      sorted.forEach((r) => container.appendChild(r));
+    }
+    filter.addEventListener('input', apply);
+    sSel.addEventListener('change', apply);
+    oSel.addEventListener('change', apply);
+  </script>
+</Base>

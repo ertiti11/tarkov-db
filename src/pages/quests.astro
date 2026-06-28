@@ -1,0 +1,77 @@
+---
+import Base from '../layouts/Base.astro';
+import tasks from '../data/tasks.json';
+
+const sorted = (tasks as any[]).slice().sort((a, b) => {
+  const t = (a.trader?.normalizedName || '').localeCompare(b.trader?.normalizedName || '');
+  if (t !== 0) return t;
+  return (a.minPlayerLevel || 0) - (b.minPlayerLevel || 0);
+});
+const traders = Array.from(new Set(sorted.map((t) => t.trader?.normalizedName).filter(Boolean))).sort();
+---
+<Base title="Quests — TarkovDB" active="quests">
+  <div class="flex items-center gap-2 mb-3 flex-wrap">
+    <input id="filter" type="text" placeholder="Filter by name…"
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+    <select id="traderFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+      <option value="">All traders</option>
+      {traders.map((t) => <option value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+    </select>
+    <label class="text-xs flex items-center gap-1"><input id="kappaOnly" type="checkbox" class="accent-accent" /> Kappa only</label>
+    <label class="text-xs flex items-center gap-1"><input id="lkOnly" type="checkbox" class="accent-accent" /> Lightkeeper only</label>
+    <div class="text-xs text-text-mute ml-auto">{sorted.length} quests</div>
+  </div>
+
+  <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+    <div class="grid grid-cols-[150px_1fr_120px_60px_80px_80px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
+      <div class="px-2 py-2">Trader</div>
+      <div class="px-2 py-2">Quest</div>
+      <div class="px-2 py-2">Map</div>
+      <div class="px-2 py-2 text-right">Min LV</div>
+      <div class="px-2 py-2 text-right">XP</div>
+      <div class="px-2 py-2 text-center">Tags</div>
+    </div>
+    <div id="rows">
+      {sorted.map((q) => (
+        <a href={q.wikiLink} target="_blank" rel="noopener"
+           class="quest-row grid grid-cols-[150px_1fr_120px_60px_80px_80px] border-b border-bg-border row-hover text-sm py-1"
+           data-trader={q.trader?.normalizedName || ''}
+           data-name={(q.name || '').toLowerCase()}
+           data-kappa={q.kappaRequired ? '1' : '0'}
+           data-lk={q.lightkeeperRequired ? '1' : '0'}>
+          <div class="px-2 py-2 capitalize text-text-dim">{q.trader?.normalizedName}</div>
+          <div class="px-2 py-2 truncate">{q.name}</div>
+          <div class="px-2 py-2 text-text-dim capitalize">{q.map?.normalizedName || '—'}</div>
+          <div class="px-2 py-2 text-right text-num">{q.minPlayerLevel || '—'}</div>
+          <div class="px-2 py-2 text-right text-num text-text-dim">{(q.experience || 0).toLocaleString()}</div>
+          <div class="px-2 py-2 text-center text-xs">
+            {q.kappaRequired && <span class="text-accent mr-1" title="Kappa required">κ</span>}
+            {q.lightkeeperRequired && <span class="text-accent-cool" title="Lightkeeper required">LK</span>}
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+
+  <script>
+    const filter = document.getElementById('filter') as HTMLInputElement;
+    const tSel = document.getElementById('traderFilter') as HTMLSelectElement;
+    const kappa = document.getElementById('kappaOnly') as HTMLInputElement;
+    const lk = document.getElementById('lkOnly') as HTMLInputElement;
+    function apply() {
+      const q = filter.value.trim().toLowerCase();
+      const t = tSel.value;
+      document.querySelectorAll<HTMLElement>('.quest-row').forEach((r) => {
+        const okN = !q || (r.dataset.name || '').includes(q);
+        const okT = !t || r.dataset.trader === t;
+        const okK = !kappa.checked || r.dataset.kappa === '1';
+        const okL = !lk.checked || r.dataset.lk === '1';
+        r.style.display = (okN && okT && okK && okL) ? '' : 'none';
+      });
+    }
+    filter.addEventListener('input', apply);
+    tSel.addEventListener('change', apply);
+    kappa.addEventListener('change', apply);
+    lk.addEventListener('change', apply);
+  </script>
+</Base>

@@ -1,0 +1,153 @@
+---
+import '../styles/globals.css';
+
+interface Props {
+  title?: string;
+  active?: string;
+}
+const { title = 'TarkovDB', active = '' } = Astro.props;
+
+const navItems = [
+  { href: '/',        label: 'Market',  key: 'market' },
+  { href: '/guns/',   label: 'Guns',    key: 'guns' },
+  { href: '/ammo/',   label: 'Ammo',    key: 'ammo' },
+  { href: '/barter/', label: 'Barter',  key: 'barter' },
+  { href: '/craft/',  label: 'Craft',   key: 'craft' },
+  { href: '/traders/',label: 'Traders', key: 'traders' },
+  { href: '/maps/',   label: 'Maps',    key: 'maps' },
+  { href: '/quests/', label: 'Quests',  key: 'quests' },
+  { href: '/hideout/',label: 'Hideout', key: 'hideout' },
+];
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <link rel="preconnect" href="https://assets.tarkov.dev" crossorigin />
+  <link rel="preconnect" href="https://eft-cdn.dvcstudiox.workers.dev" crossorigin />
+  <link rel="preconnect" href="https://json.tarkov.dev" crossorigin />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0b'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='monospace' font-size='18' font-weight='bold' fill='%23c9a44c'%3ET%3C/text%3E%3C/svg%3E" />
+</head>
+<body class="min-h-screen flex flex-col">
+  <header class="border-b border-bg-border bg-bg-elev sticky top-0 z-40 backdrop-blur">
+    <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center gap-6">
+      <a href="/" class="flex items-center gap-2 group">
+        <span class="text-accent font-bold text-lg tracking-tight">⛬ TarkovDB</span>
+        <span class="text-text-mute text-xs hidden md:inline">faster.</span>
+      </a>
+      <nav class="flex items-center gap-1 text-sm">
+        {navItems.map((n) => (
+          <a href={n.href}
+             class={`px-3 py-1.5 rounded transition-colors ${active === n.key ? 'text-accent bg-bg-card' : 'text-text-dim hover:text-text hover:bg-bg-hover'}`}>
+            {n.label}
+          </a>
+        ))}
+      </nav>
+      <div class="flex-1 max-w-md ml-auto relative">
+        <input id="globalSearch" type="text" placeholder="Search items, traders, quests… (Ctrl+K)"
+               class="w-full bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm placeholder:text-text-mute focus:outline-none focus:border-accent" />
+        <div id="searchResults" class="absolute top-full mt-1 left-0 right-0 bg-bg-elev border border-bg-border rounded shadow-2xl max-h-96 overflow-auto hidden z-50"></div>
+      </div>
+      <div class="flex items-center gap-2 text-xs">
+        <button id="modeToggle" class="px-2 py-1 rounded bg-bg-card border border-bg-border text-text-dim hover:text-accent" data-mode="pve">PVE</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-[1600px] mx-auto w-full px-4 py-4">
+    <slot />
+  </main>
+
+  <footer class="border-t border-bg-border py-4 text-center text-xs text-text-mute">
+    Data from <a href="https://tarkov.dev" class="hover:text-accent">tarkov.dev</a> · Not affiliated with BSG · Built with Astro
+  </footer>
+
+  <script>
+    // Global search with debounce + Fuse-lite
+    let items: any[] = [];
+    let fuseReady = false;
+    const input = document.getElementById('globalSearch') as HTMLInputElement;
+    const results = document.getElementById('searchResults') as HTMLDivElement;
+
+    async function loadIndex() {
+      if (fuseReady) return;
+      try {
+        const res = await fetch('/data/items.json');
+        items = await res.json();
+        fuseReady = true;
+      } catch (e) { console.error(e); }
+    }
+
+    function score(q: string, it: any) {
+      const n = it.n.toLowerCase();
+      const sn = (it.sn || '').toLowerCase();
+      if (n.startsWith(q)) return 0;
+      if (sn.startsWith(q)) return 1;
+      if (n.includes(q)) return 2;
+      if (sn.includes(q)) return 3;
+      return -1;
+    }
+
+    let timer: any;
+    input?.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) { results.classList.add('hidden'); return; }
+        await loadIndex();
+        const hits: any[] = [];
+        for (const it of items) {
+          const s = score(q, it);
+          if (s >= 0) hits.push({ ...it, _s: s });
+          if (hits.length > 200) break;
+        }
+        hits.sort((a, b) => a._s - b._s);
+        const top = hits.slice(0, 12);
+        results.innerHTML = top.map((it) => `
+          <a href="/item/${it.nn}/" class="flex items-center gap-3 px-3 py-2 hover:bg-bg-hover border-b border-bg-border last:border-0">
+            <img src="${it.ic}" alt="" loading="lazy" class="w-8 h-8 object-contain" />
+            <div class="flex-1 min-w-0">
+              <div class="text-sm truncate">${it.n}</div>
+              <div class="text-xs text-text-mute">${it.sn || ''}</div>
+            </div>
+            <div class="text-num text-sm text-accent">${(it.a24 || it.llp || it.bp || 0).toLocaleString()} ₽</div>
+          </a>
+        `).join('');
+        results.classList.toggle('hidden', top.length === 0);
+      }, 80);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!results.contains(e.target as Node) && e.target !== input) {
+        results.classList.add('hidden');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        input.focus();
+        input.select();
+      }
+      if (e.key === 'Escape') {
+        results.classList.add('hidden');
+        input.blur();
+      }
+    });
+
+    // Game mode toggle (persisted)
+    const modeBtn = document.getElementById('modeToggle') as HTMLButtonElement;
+    const savedMode = localStorage.getItem('tdb-mode') || 'pve';
+    modeBtn.textContent = savedMode.toUpperCase();
+    modeBtn.dataset.mode = savedMode;
+    modeBtn.addEventListener('click', () => {
+      const next = modeBtn.dataset.mode === 'pve' ? 'pvp' : 'pve';
+      modeBtn.dataset.mode = next;
+      modeBtn.textContent = next.toUpperCase();
+      localStorage.setItem('tdb-mode', next);
+      window.dispatchEvent(new CustomEvent('mode-change', { detail: next }));
+    });
+  </script>
+</body>
+</html>

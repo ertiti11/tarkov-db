@@ -1,0 +1,37 @@
+---
+import Base from '../layouts/Base.astro';
+import traders from '../data/traders.json';
+---
+<Base title="Traders — TarkovDB" active="traders">
+  <h1 class="text-lg font-semibold mb-4">Traders</h1>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {(traders as any[]).map((t) => (
+      <div class="bg-bg-elev border border-bg-border rounded p-4">
+        <div class="flex items-start gap-3 mb-3">
+          <img src={t.imageLink} alt={t.name} class="w-16 h-16 object-cover rounded" loading="lazy" />
+          <div>
+            <h2 class="text-base font-semibold">{t.name}</h2>
+            <div class="text-xs text-text-mute">Currency: {t.currency.name}</div>
+          </div>
+        </div>
+        <table class="w-full text-xs">
+          <thead class="text-text-mute">
+            <tr><th class="text-left">LV</th><th class="text-right">PvP</th><th class="text-right">Rep</th><th class="text-right">Commerce</th><th class="text-right">Pay</th><th class="text-right">Ins</th></tr>
+          </thead>
+          <tbody>
+            {(t.levels || []).map((lv: any) => (
+              <tr class="border-t border-bg-border">
+                <td class="py-1 text-accent">L{lv.level}</td>
+                <td class="py-1 text-right text-num">{lv.requiredPlayerLevel}</td>
+                <td class="py-1 text-right text-num">{lv.requiredReputation.toFixed(2)}</td>
+                <td class="py-1 text-right text-num">{(lv.requiredCommerce / 1000).toFixed(0)}k</td>
+                <td class="py-1 text-right text-num">{(lv.payRate * 100).toFixed(0)}%</td>
+                <td class="py-1 text-right text-num">{(lv.insuranceRate * 100).toFixed(0)}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ))}
+  </div>
+</Base>

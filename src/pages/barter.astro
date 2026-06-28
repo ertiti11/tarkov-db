@@ -1,0 +1,109 @@
+---
+import Base from '../layouts/Base.astro';
+import barters from '../data/barters.json';
+import items from '../data/items.json';
+
+// Build a quick item lookup for prices
+const itemPrice: Record<string, number> = {};
+for (const it of items as any[]) {
+  itemPrice[it.id] = it.a24 || it.llp || it.bp || 0;
+}
+
+// Annotate each barter with cost/value/profit
+const annotated = (barters as any[]).map((b) => {
+  const cost = b.requiredItems.reduce((s: number, r: any) => s + (itemPrice[r.item.id] || 0) * r.count, 0);
+  const value = b.rewardItems.reduce((s: number, r: any) => s + (itemPrice[r.item.id] || 0) * r.count, 0);
+  return { ...b, _cost: cost, _value: value, _profit: value - cost };
+});
+annotated.sort((a, b) => b._profit - a._profit);
+
+const traders = Array.from(new Set(annotated.map((b) => b.trader.normalizedName))).sort();
+---
+<Base title="Barter — TarkovDB" active="barter">
+  <div class="flex items-center gap-2 mb-3 flex-wrap">
+    <input id="filter" type="text" placeholder="Filter by item name…"
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+    <select id="traderFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+      <option value="">All traders</option>
+      {traders.map((t) => <option value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+    </select>
+    <select id="sortBy" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+      <option value="profit">Profit ↓</option>
+      <option value="value">Reward value ↓</option>
+      <option value="cost">Cost ↑</option>
+      <option value="level">Trader level ↑</option>
+    </select>
+    <div class="text-xs text-text-mute ml-auto">{annotated.length} barters</div>
+  </div>
+
+  <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+    <div class="grid grid-cols-[140px_1fr_40px_1fr_110px_110px_110px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
+      <div class="px-2 py-2">Trader · LV</div>
+      <div class="px-2 py-2">Cost</div>
+      <div class="px-2 py-2"></div>
+      <div class="px-2 py-2">Reward</div>
+      <div class="px-2 py-2 text-right">Cost ₽</div>
+      <div class="px-2 py-2 text-right">Value ₽</div>
+      <div class="px-2 py-2 text-right">Profit ₽</div>
+    </div>
+    <div id="rows">
+      {annotated.map((b) => (
+        <div class="barter-row grid grid-cols-[140px_1fr_40px_1fr_110px_110px_110px] border-b border-bg-border row-hover text-sm py-1"
+             data-trader={b.trader.normalizedName}
+             data-name={(b.requiredItems.concat(b.rewardItems).map((r: any) => r.item.shortName + ' ' + r.item.name).join(' ')).toLowerCase()}
+             data-profit={b._profit} data-value={b._value} data-cost={b._cost} data-level={b.level}>
+          <div class="px-2 py-2 capitalize text-text-dim">{b.trader.normalizedName} <span class="text-accent">L{b.level}</span></div>
+          <div class="px-2 py-2 flex items-center gap-1 flex-wrap">
+            {b.requiredItems.map((r: any) => (
+              <a href={`/item/${r.item.id}/`} class="flex items-center gap-1 px-1.5 py-0.5 bg-bg-card rounded text-xs">
+                <img src={r.item.iconLink} class="w-5 h-5 object-contain" loading="lazy" />
+                <span class="truncate max-w-[120px]">{r.item.shortName}</span>
+                <span class="text-text-mute">×{r.count}</span>
+              </a>
+            ))}
+          </div>
+          <div class="px-2 py-2 text-text-mute flex items-center">→</div>
+          <div class="px-2 py-2 flex items-center gap-1 flex-wrap">
+            {b.rewardItems.map((r: any) => (
+              <a href={`/item/${r.item.id}/`} class="flex items-center gap-1 px-1.5 py-0.5 bg-bg-card rounded text-xs">
+                <img src={r.item.iconLink} class="w-5 h-5 object-contain" loading="lazy" />
+                <span class="text-accent truncate max-w-[120px]">{r.item.shortName}</span>
+                <span class="text-text-mute">×{r.count}</span>
+              </a>
+            ))}
+          </div>
+          <div class="px-2 py-2 text-right text-num text-text-dim">{Math.round(b._cost).toLocaleString()}</div>
+          <div class="px-2 py-2 text-right text-num">{Math.round(b._value).toLocaleString()}</div>
+          <div class={`px-2 py-2 text-right text-num font-semibold ${b._profit > 0 ? 'up' : 'down'}`}>{b._profit > 0 ? '+' : ''}{Math.round(b._profit).toLocaleString()}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <script>
+    const filter = document.getElementById('filter') as HTMLInputElement;
+    const tSel = document.getElementById('traderFilter') as HTMLSelectElement;
+    const sSel = document.getElementById('sortBy') as HTMLSelectElement;
+    const container = document.getElementById('rows')!;
+    function apply() {
+      const q = filter.value.trim().toLowerCase();
+      const tr = tSel.value;
+      const rows = Array.from(container.querySelectorAll<HTMLElement>('.barter-row'));
+      rows.forEach((r) => {
+        const okName = !q || (r.dataset.name || '').includes(q);
+        const okTrader = !tr || r.dataset.trader === tr;
+        r.style.display = (okName && okTrader) ? '' : 'none';
+      });
+      const key = sSel.value;
+      const sorted = rows.slice().sort((a, b) => {
+        const av = parseFloat(a.dataset[key as any] || '0');
+        const bv = parseFloat(b.dataset[key as any] || '0');
+        return key === 'cost' || key === 'level' ? av - bv : bv - av;
+      });
+      sorted.forEach((r) => container.appendChild(r));
+    }
+    filter.addEventListener('input', apply);
+    tSel.addEventListener('change', apply);
+    sSel.addEventListener('change', apply);
+  </script>
+</Base>

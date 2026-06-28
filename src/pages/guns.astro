@@ -1,0 +1,78 @@
+---
+import Base from '../layouts/Base.astro';
+import items from '../data/items.json';
+import forge from '../data/forge.json';
+
+const forgeIds = new Set((forge as any).weapons.map((w: any) => w.id));
+
+// Weapon classes in display order; each gun carries one of these categories.
+const CLASSES: { key: string; label: string }[] = [
+  { key: 'assault-rifle', label: 'Assault Rifles' },
+  { key: 'assault-carbine', label: 'Assault Carbines' },
+  { key: 'smg', label: 'SMGs' },
+  { key: 'marksman-rifle', label: 'Marksman Rifles' },
+  { key: 'sniper-rifle', label: 'Sniper Rifles' },
+  { key: 'machinegun', label: 'Machine Guns' },
+  { key: 'shotgun', label: 'Shotguns' },
+  { key: 'handgun', label: 'Pistols' },
+  { key: 'revolver', label: 'Revolvers' },
+];
+
+const guns = (items as any[]).filter((it) => (it.t || []).includes('gun'));
+
+const groups = CLASSES.map((cls) => ({
+  ...cls,
+  guns: guns
+    .filter((g) => (g.c || []).includes(cls.key))
+    .sort((a, b) => a.n.localeCompare(b.n)),
+})).filter((g) => g.guns.length);
+---
+<Base title="Guns — TarkovDB" active="guns">
+  <div class="flex items-center gap-3 mb-1">
+    <h1 class="text-xl font-semibold">Guns</h1>
+    <span class="text-accent text-sm">⚒ FORGE</span>
+    <span class="text-text-mute text-sm">elige un arma y genera la mejor build calidad / precio</span>
+  </div>
+  <p class="text-text-mute text-xs mb-4">{guns.length} armas · {forgeIds.size} con generador de builds</p>
+
+  <input id="gunFilter" type="text" placeholder="Filtrar armas…"
+         class="w-full max-w-md mb-5 bg-bg-card border border-bg-border rounded px-3 py-2 text-sm placeholder:text-text-mute focus:outline-none focus:border-accent" />
+
+  {groups.map((group) => (
+    <section class="mb-6 gun-group" data-label={group.label.toLowerCase()}>
+      <h2 class="text-sm text-text-dim mb-2 uppercase tracking-wide">{group.label} <span class="text-text-mute">({group.guns.length})</span></h2>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        {group.guns.map((g) => (
+          <a href={forgeIds.has(g.id) ? `/forge/${g.id}/` : `/item/${g.id}/`}
+             class="gun-card group bg-bg-elev border border-bg-border rounded p-2 flex flex-col items-center text-center hover:border-accent transition-colors"
+             data-name={`${g.n} ${g.sn || ''}`.toLowerCase()}>
+            <img src={g.ic} alt="" loading="lazy" class="h-12 object-contain mb-1" />
+            <div class="text-xs font-medium leading-tight">{g.sn || g.n}</div>
+            <div class="text-[10px] text-text-mute leading-tight truncate w-full">{g.n}</div>
+            {forgeIds.has(g.id)
+              ? <div class="text-[10px] text-accent mt-1 opacity-0 group-hover:opacity-100">⚒ generar build →</div>
+              : <div class="text-[10px] text-text-mute mt-1">sin builds</div>}
+          </a>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  <script>
+    const input = document.getElementById('gunFilter') as HTMLInputElement;
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('.gun-card'));
+    const groups = Array.from(document.querySelectorAll<HTMLElement>('.gun-group'));
+    input?.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      for (const c of cards) {
+        const hit = !q || (c.dataset.name || '').includes(q);
+        c.style.display = hit ? '' : 'none';
+      }
+      // Hide empty groups
+      for (const g of groups) {
+        const anyVisible = Array.from(g.querySelectorAll<HTMLElement>('.gun-card')).some((c) => c.style.display !== 'none');
+        g.style.display = anyVisible ? '' : 'none';
+      }
+    });
+  </script>
+</Base>

@@ -1,0 +1,1009 @@
+---
+import Base from '../../layouts/Base.astro';
+import forge from '../../data/forge.json';
+
+export async function getStaticPaths() {
+  const data = forge as any;
+  return (data.weapons as any[]).map((w) => ({ params: { name: w.id } }));
+}
+---
+<Base title="FORGE - TarkovDB" active="guns">
+  <a href="/guns/" class="text-text-mute hover:text-accent text-sm mb-3 inline-block">← Guns</a>
+
+  <div id="loading" class="text-text-mute py-12 text-center">Cargando arma...</div>
+
+  <div id="content" class="hidden">
+    <div class="grid grid-cols-1 xl:grid-cols-[390px_1fr] gap-4 items-start">
+      <aside class="bg-bg-elev border border-bg-border rounded p-3 xl:sticky xl:top-20">
+        <div class="flex items-start justify-between gap-3 border-b border-bg-border pb-3 mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl font-black tracking-tight text-text">FORGE</span>
+              <span class="text-[10px] uppercase font-bold text-bg bg-accent px-1 rounded">beta</span>
+            </div>
+            <div class="text-xs text-text-mute font-mono">Firearm Optimization, Ranking & Generation Engine</div>
+          </div>
+          <a id="itemLink" class="text-xs text-accent hover:underline whitespace-nowrap">ver item ↗</a>
+        </div>
+
+        <div class="flex items-center gap-3 mb-4">
+          <img id="wImg" alt="" class="w-32 h-20 object-contain border border-bg-border bg-bg-card rounded p-1" />
+          <div class="min-w-0">
+            <div class="text-accent text-xs font-bold tracking-wide">BASIC / ADVANCED <span class="text-[9px] text-text-mute">soon</span></div>
+            <h1 id="wName" class="text-lg font-semibold leading-tight"></h1>
+            <div id="wBase" class="text-text-mute text-xs"></div>
+          </div>
+        </div>
+
+        <section class="border border-bg-border rounded p-3 mb-3">
+          <h2 class="text-[11px] uppercase tracking-[0.18em] text-accent mb-3">Generator settings</h2>
+          <div class="grid grid-cols-2 gap-2 mb-4">
+            <button id="suppressedToggle" class="setting-toggle" data-active="false">Suppressed: Off</button>
+            <button id="buyableToggle" class="setting-toggle active" data-active="true">Buyable: On</button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">Mags</div>
+            <div id="magOptions" class="seg-grid"></div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">Scope</div>
+            <div class="seg-grid">
+              <button class="seg-btn scope-btn" data-scope="close">Close</button>
+              <button class="seg-btn scope-btn" data-scope="mid">Mid</button>
+              <button class="seg-btn scope-btn active" data-scope="range">Range</button>
+              <button class="seg-btn scope-btn" data-scope="any">Any</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">Tactical</div>
+            <div class="seg-grid">
+              <button class="seg-btn tactical-btn active" data-tactical="off">Off</button>
+              <button class="seg-btn tactical-btn" data-tactical="on">On</button>
+              <button class="seg-btn tactical-btn" data-tactical="any">Any</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="border border-bg-border rounded p-3 mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-[11px] uppercase tracking-[0.18em] text-accent-hot">Blocked <span id="blockedCount">(0)</span></h2>
+            <button id="clearBlocked" class="tiny-btn">Clear</button>
+          </div>
+          <input id="blockedSearch" class="search-box" placeholder="Search an item to blacklist" />
+          <div id="blockedResults" class="result-list"></div>
+          <div id="blockedChips" class="chip-row"></div>
+        </section>
+
+        <section class="border border-bg-border rounded p-3 mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <h2 class="text-[11px] uppercase tracking-[0.18em] text-accent-cool">Forced <span id="forcedCount">(0)</span></h2>
+            <button id="clearForced" class="tiny-btn">Clear</button>
+          </div>
+          <input id="forcedSearch" class="search-box" placeholder="Search an item to force-include" />
+          <div id="forcedResults" class="result-list"></div>
+          <div id="forcedChips" class="chip-row"></div>
+        </section>
+
+        <section class="border border-bg-border rounded p-3">
+          <button id="generateBtn" class="w-full bg-accent text-bg font-bold text-xs uppercase tracking-wide rounded px-3 py-2 hover:opacity-90">Generate builds</button>
+          <div id="genInfo" class="text-xs text-text-mute mt-3 leading-relaxed"></div>
+        </section>
+      </aside>
+
+      <section class="min-w-0">
+        <div class="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+          <div class="bg-bg-elev border border-bg-border rounded p-4">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h3 class="text-sm text-text-dim">Builds calidad / precio</h3>
+              <span id="buildCount" class="text-xs text-text-mute"></span>
+            </div>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css" />
+            <div id="chart" class="h-72 relative"></div>
+            <div class="mt-5">
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-text-dim">Presupuesto máximo</span>
+                <span id="budgetVal" class="text-num text-accent"></span>
+              </div>
+              <input id="budget" type="range" class="w-full accent-accent" />
+              <div class="flex justify-between text-xs text-text-mute">
+                <span id="budgetMin"></span>
+                <span id="budgetMax"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-bg-elev border border-bg-border rounded p-4">
+            <h3 class="text-sm text-text-dim mb-3">Build seleccionada</h3>
+            <div id="stats" class="grid grid-cols-2 gap-2 mb-4"></div>
+            <div id="statBars" class="space-y-2 mb-4"></div>
+            <div id="pickTools" class="hidden border-t border-bg-border pt-3 mt-3">
+              <div class="text-[11px] uppercase tracking-[0.16em] text-text-mute mb-2">Selector rápido</div>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <button class="pick-btn" data-pick="budget">Mejor presupuesto</button>
+                <button class="pick-btn" data-pick="recoil">Menor recoil</button>
+                <button class="pick-btn" data-pick="ergo">Mayor ergo</button>
+                <button class="pick-btn" data-pick="cheap">Más barata</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button id="prevBuild" class="pick-btn">Anterior</button>
+                <button id="nextBuild" class="pick-btn">Siguiente</button>
+              </div>
+            </div>
+            <div class="text-xs text-text-dim flex items-center justify-between">
+              <span id="partCount"></span>
+              <span id="buildPrice" class="text-num text-accent"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-bg-elev border border-bg-border rounded p-4 mt-4">
+          <h3 class="text-sm text-text-dim mb-3">Montaje · piezas conectadas</h3>
+          <div id="buildTree" class="overflow-x-auto pb-2"></div>
+        </div>
+
+        <div class="bg-bg-elev border border-bg-border rounded mt-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b border-bg-border">
+            <h3 class="text-sm text-text-dim">Todas las builds <span id="tableCount" class="text-text-mute"></span></h3>
+            <div class="flex gap-1 text-xs">
+              <button data-sort="price" class="sort-btn px-2 py-0.5 rounded bg-accent text-bg border border-accent">precio ↑</button>
+              <button data-sort="recoil" class="sort-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">retroceso ↓</button>
+              <button data-sort="ergo" class="sort-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">ergo ↓</button>
+            </div>
+          </div>
+          <div class="max-h-96 overflow-auto">
+            <table class="w-full text-sm">
+              <thead class="sticky top-0 bg-bg-elev text-text-mute text-xs">
+                <tr class="border-b border-bg-border">
+                  <th class="text-left font-normal px-4 py-1.5">#</th>
+                  <th class="text-right font-normal px-3 py-1.5">Precio</th>
+                  <th class="text-right font-normal px-3 py-1.5">Retroceso V</th>
+                  <th class="text-right font-normal px-3 py-1.5">Ergonomía</th>
+                  <th class="text-right font-normal px-3 py-1.5">Piezas</th>
+                </tr>
+              </thead>
+              <tbody id="buildRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="text-xs text-text-mute mt-4 max-w-4xl">
+      Los filtros de cargador, scope, táctico, supresor, bloqueados y forzados se aplican antes de reconstruir la lista rankeada.
+      <span class="text-text-dim">Cifras aproximadas: todavía se ignoran algunos conflictos internos entre mods.</span>
+    </p>
+  </div>
+
+  <div id="notfound" class="hidden text-text-mute py-12 text-center">
+    Esta arma todavía no está en FORGE.
+  </div>
+
+  <style>
+    .setting-toggle {
+      border: 1px solid #26262e;
+      background: #0e0e12;
+      color: #9b9ba1;
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .setting-toggle.active {
+      border-color: #4ea1d3;
+      color: #e6e6e6;
+      background: linear-gradient(180deg, rgba(78,161,211,.22), rgba(78,161,211,.08));
+    }
+    .setting-row {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      margin-top: 12px;
+    }
+    .setting-label {
+      color: #6b6b73;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .seg-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1px;
+      background: #09090b;
+      border: 1px solid #26262e;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .seg-btn {
+      min-height: 30px;
+      background: #15151a;
+      color: #9b9ba1;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .seg-btn.active {
+      background: #07323a;
+      color: #2bd8f0;
+    }
+    .tiny-btn {
+      border: 1px solid #3a3a44;
+      color: #6b6b73;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    .search-box {
+      width: 100%;
+      border: 1px solid #26262e;
+      background: #09090b;
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: #e6e6e6;
+      font-size: 12px;
+      outline: none;
+    }
+    .search-box:focus { border-color: #4ea1d3; }
+    .result-list {
+      margin-top: 6px;
+      max-height: 160px;
+      overflow: auto;
+    }
+    .result-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      padding: 6px;
+      border-radius: 4px;
+      color: #d8d8dc;
+      font-size: 12px;
+      text-align: left;
+    }
+    .result-row:hover { background: #1c1c22; }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .chip {
+      border: 1px solid #3a3a44;
+      background: #15151a;
+      color: #d8d8dc;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+    }
+    .pick-btn {
+      border: 1px solid #303039;
+      background: #111116;
+      color: #b8b8be;
+      border-radius: 4px;
+      min-height: 30px;
+      padding: 6px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .pick-btn:hover {
+      border-color: #4ea1d3;
+      color: #e6e6e6;
+      background: #151d22;
+    }
+    .pick-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    @media (max-width: 640px) {
+      .u-legend { display: none !important; }
+      .setting-row { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <script>
+    import { generateBuildCandidates, bestUnderBudget } from '../../lib/forge';
+    import type { ForgeData, ForgeWeapon, ForgeMod, ForgeSlot, Build } from '../../lib/forge';
+
+    type ScopeMode = 'close' | 'mid' | 'range' | 'any';
+    type TacticalMode = 'off' | 'on' | 'any';
+    interface CatalogItem { id: string; n: string; sn: string; ic: string; }
+
+    const fmtRub = (n: number) => Math.round(n).toLocaleString() + ' ₽';
+    const fmtInt = (n: number) => Math.round(n).toLocaleString();
+    const fmtCombos = (n: number) =>
+      n >= 1e6 ? n.toExponential(1).replace('e+', '×10^') : Math.round(n).toLocaleString();
+    const BUILD_LIMIT = 350_000;
+    const DEFAULT_BUDGET = 350_000;
+    const CHART_LIMIT = 4_000;
+    const TABLE_ROW_LIMIT = 1_500;
+
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    const wid = decodeURIComponent(parts[parts.length - 1] || '');
+
+    let uPlot: any, chart: any;
+    let builds: Build[] = [];
+    let chartBuilds: Build[] = [];
+    let mods: Record<string, ForgeMod> = {};
+    let weapon: ForgeWeapon;
+    let selected: Build | null = null;
+    let sortKey: 'price' | 'recoil' | 'ergo' = 'price';
+    let catalog: CatalogItem[] = [];
+    let lastCombos = 0;
+    let lastMs = 0;
+
+    const settings = {
+      mag: 'any',
+      scope: 'range' as ScopeMode,
+      tactical: 'off' as TacticalMode,
+      suppressed: false,
+      buyable: true,
+      blocked: new Set<string>(),
+      forced: new Set<string>(),
+    };
+
+    async function loadUplot() {
+      if (uPlot) return uPlot;
+      const mod: any = await import('https://cdn.jsdelivr.net/npm/uplot@1.6.30/+esm');
+      uPlot = mod.default;
+      return uPlot;
+    }
+
+    async function main() {
+      const data: ForgeData = await fetch('/data/forge.json').then((r) => r.json());
+      mods = data.mods;
+      const w = data.weapons.find((x) => x.id === wid);
+      if (!w) {
+        document.getElementById('loading')!.classList.add('hidden');
+        document.getElementById('notfound')!.classList.remove('hidden');
+        return;
+      }
+      weapon = w;
+      catalog = buildCatalog();
+
+      document.getElementById('loading')!.classList.add('hidden');
+      document.getElementById('content')!.classList.remove('hidden');
+      document.title = `${weapon.n} - FORGE - TarkovDB`;
+
+      const wImg = document.getElementById('wImg') as HTMLImageElement;
+      wImg.src = weaponImage(weapon);
+      wImg.onerror = () => { wImg.onerror = null; wImg.src = weapon.ic; };
+      document.getElementById('wName')!.textContent = weapon.n;
+      document.getElementById('wBase')!.textContent =
+        `base · ergo ${weapon.e0} · recoil V ${weapon.rv} · H ${weapon.rh}`;
+      (document.getElementById('itemLink') as HTMLAnchorElement).href = `/item/${weapon.id}/`;
+
+      setupControls();
+      renderReady();
+    }
+
+    function weaponImage(w: ForgeWeapon): string {
+      const img = w.img || '';
+      if (img.endsWith('-image.webp') && !img.endsWith('-base-image.webp') && !img.endsWith('-grid-image.webp')) {
+        return img.replace('-image.webp', '-base-image.webp');
+      }
+      return img || `https://assets.tarkov.dev/${w.id}-base-image.webp`;
+    }
+
+    function setupControls() {
+      renderMagOptions();
+      bindSegment('.scope-btn', 'scope', (v) => { settings.scope = v as ScopeMode; });
+      bindSegment('.tactical-btn', 'tactical', (v) => { settings.tactical = v as TacticalMode; });
+
+      const suppressed = document.getElementById('suppressedToggle') as HTMLButtonElement;
+      suppressed.addEventListener('click', () => {
+        settings.suppressed = !settings.suppressed;
+        suppressed.classList.toggle('active', settings.suppressed);
+        suppressed.textContent = `Suppressed: ${settings.suppressed ? 'On' : 'Off'}`;
+        markStale();
+      });
+
+      const buyable = document.getElementById('buyableToggle') as HTMLButtonElement;
+      buyable.addEventListener('click', () => {
+        settings.buyable = !settings.buyable;
+        buyable.classList.toggle('active', settings.buyable);
+        buyable.textContent = `Buyable: ${settings.buyable ? 'On' : 'Off'}`;
+        markStale();
+      });
+
+      document.getElementById('generateBtn')!.addEventListener('click', runGeneration);
+      document.getElementById('clearBlocked')!.addEventListener('click', () => { settings.blocked.clear(); updateChips(); markStale(); });
+      document.getElementById('clearForced')!.addEventListener('click', () => { settings.forced.clear(); updateChips(); markStale(); });
+      bindSearch('blockedSearch', 'blockedResults', settings.blocked);
+      bindSearch('forcedSearch', 'forcedResults', settings.forced);
+
+      document.querySelectorAll<HTMLButtonElement>('.sort-btn').forEach((b) => {
+        b.addEventListener('click', () => {
+          sortKey = b.dataset.sort as any;
+          document.querySelectorAll('.sort-btn').forEach((x) =>
+            (x as HTMLElement).className = 'sort-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border');
+          b.className = 'sort-btn px-2 py-0.5 rounded bg-accent text-bg border border-accent';
+          renderRows();
+        });
+      });
+
+      document.querySelectorAll<HTMLButtonElement>('.pick-btn[data-pick]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const pick = pickBuild(b.dataset.pick!);
+          if (pick) select(pick);
+        });
+      });
+      document.getElementById('prevBuild')!.addEventListener('click', () => stepSelected(-1));
+      document.getElementById('nextBuild')!.addEventListener('click', () => stepSelected(1));
+    }
+
+    function bindSegment(selector: string, key: 'scope' | 'tactical', setter: (v: string) => void) {
+      document.querySelectorAll<HTMLButtonElement>(selector).forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll(selector).forEach((x) => x.classList.remove('active'));
+          btn.classList.add('active');
+          setter(btn.dataset[key]!);
+          markStale();
+        });
+      });
+    }
+
+    function renderMagOptions() {
+      const caps = new Set<number>();
+      const seen = new Set<string>();
+      const visit = (slots: ForgeSlot[]) => {
+        for (const s of slots) {
+          for (const id of s.items) {
+            const m = mods[id];
+            if (!m || seen.has(id)) continue;
+            seen.add(id);
+            if (m.cap && m.cap >= 10) caps.add(m.cap);
+            if (m.s?.length) visit(m.s);
+          }
+        }
+      };
+      visit(weapon.s);
+      const preferred = [10, 20, 30, 40, 45, 50, 60, 75, 95, 100];
+      const allCaps = Array.from(caps).sort((a, b) => a - b);
+      const preferredCaps = allCaps.filter((c) => preferred.includes(c));
+      const top = preferredCaps.length ? preferredCaps : allCaps;
+      const values = ['any', ...top.slice(0, 9).map(String)];
+      document.getElementById('magOptions')!.innerHTML = values.map((v) =>
+        `<button class="seg-btn mag-btn ${v === 'any' ? 'active' : ''}" data-mag="${v}">${v === 'any' ? 'Any' : v}</button>`
+      ).join('');
+      document.querySelectorAll<HTMLButtonElement>('.mag-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.mag-btn').forEach((x) => x.classList.remove('active'));
+          btn.classList.add('active');
+          settings.mag = btn.dataset.mag!;
+          markStale();
+        });
+      });
+    }
+
+    function bindSearch(inputId: string, resultId: string, target: Set<string>) {
+      const input = document.getElementById(inputId) as HTMLInputElement;
+      const results = document.getElementById(resultId)!;
+      input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) { results.innerHTML = ''; return; }
+        const hits = catalog.filter((m) => `${m.n} ${m.sn}`.toLowerCase().includes(q)).slice(0, 8);
+        results.innerHTML = hits.map((m) => `
+          <button class="result-row" data-id="${m.id}">
+            <img src="${m.ic}" alt="" class="w-7 h-7 object-contain border border-bg-border bg-bg-card rounded" />
+            <span class="truncate">${m.sn || m.n}</span>
+          </button>
+        `).join('');
+        results.querySelectorAll<HTMLButtonElement>('.result-row').forEach((b) => {
+          b.addEventListener('click', () => {
+            target.add(b.dataset.id!);
+            input.value = '';
+            results.innerHTML = '';
+            updateChips();
+            markStale();
+          });
+        });
+      });
+    }
+
+    function updateChips() {
+      renderChips('blockedChips', settings.blocked);
+      renderChips('forcedChips', settings.forced);
+      document.getElementById('blockedCount')!.textContent = `(${settings.blocked.size})`;
+      document.getElementById('forcedCount')!.textContent = `(${settings.forced.size})`;
+    }
+
+    function renderChips(id: string, set: Set<string>) {
+      document.getElementById(id)!.innerHTML = Array.from(set).map((mid) => {
+        const m = mods[mid];
+        return `<button class="chip" data-id="${mid}">${m?.sn || m?.n || mid} ×</button>`;
+      }).join('');
+      document.getElementById(id)!.querySelectorAll<HTMLButtonElement>('.chip').forEach((b) => {
+        b.addEventListener('click', () => { set.delete(b.dataset.id!); updateChips(); markStale(); });
+      });
+    }
+
+    function markStale() {
+      if (!builds.length) return;
+      document.getElementById('genInfo')!.innerHTML =
+        `Filtros cambiados. Pulsa <span class="text-accent font-bold">Generate builds</span> para recalcular.`;
+      document.getElementById('buildCount')!.textContent = `${fmtInt(builds.length)} builds anteriores`;
+    }
+
+    async function runGeneration() {
+      const btn = document.getElementById('generateBtn') as HTMLButtonElement;
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      btn.classList.add('opacity-70', 'cursor-wait');
+      document.getElementById('genInfo')!.innerHTML =
+        `Generando hasta <span class="text-accent text-num">${fmtInt(BUILD_LIMIT)}</span> builds...`;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
+      const { weapon: constrainedWeapon, mods: constrainedMods } = constrainedGraph();
+      const t0 = performance.now();
+      try {
+        const res = generateBuildCandidates(constrainedWeapon, constrainedMods, {
+          limit: BUILD_LIMIT,
+          accumulatorLimit: BUILD_LIMIT,
+          perModLimit: 120,
+          perSlotLimit: 260,
+          maxPairs: 450_000,
+        });
+        lastMs = Math.round(performance.now() - t0);
+        lastCombos = res.combos;
+        builds = applyPostFilters(res.builds);
+        chartBuilds = sampleBuilds(builds, CHART_LIMIT);
+
+        document.getElementById('genInfo')!.innerHTML =
+          `Exploradas <span class="text-accent text-num">${fmtCombos(lastCombos)}</span> combinaciones.<br>` +
+          `<span class="text-accent text-num">${fmtInt(builds.length)}</span> builds rankeadas en <span class="text-num">${lastMs}ms</span>.`;
+        document.getElementById('buildCount')!.textContent = `${fmtInt(builds.length)} builds`;
+        document.getElementById('tableCount')!.textContent = `(${fmtInt(builds.length)})`;
+
+        if (!builds.length) {
+          renderEmpty();
+          return;
+        }
+
+        setupBudget();
+        await renderChart();
+        renderRows();
+        const budget = +(document.getElementById('budget') as HTMLInputElement).value;
+        select(bestUnderBudget(builds, budget) || builds[0]);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate builds';
+        btn.classList.remove('opacity-70', 'cursor-wait');
+      }
+    }
+
+    function sampleBuilds(input: Build[], limit: number): Build[] {
+      if (input.length <= limit) return input;
+      const picked: Build[] = [];
+      const seen = new Set<Build>();
+      const add = (b: Build | undefined) => {
+        if (!b || seen.has(b) || picked.length >= limit) return;
+        seen.add(b);
+        picked.push(b);
+      };
+      const byQuality = [...input].sort((a, b) => b.quality - a.quality || a.price - b.price);
+      for (let i = 0; i < Math.min(400, byQuality.length); i++) add(byQuality[i]);
+      const remaining = limit - picked.length;
+      const step = (input.length - 1) / Math.max(remaining - 1, 1);
+      for (let i = 0; i < remaining; i++) add(input[Math.round(i * step)]);
+      for (const b of input) {
+        add(b);
+        if (picked.length >= limit) break;
+      }
+      picked.sort((a, b) => a.price - b.price || b.quality - a.quality);
+      return picked;
+    }
+
+    function constrainedGraph(): { weapon: ForgeWeapon; mods: Record<string, ForgeMod> } {
+      const blocked = settings.blocked;
+      const cloneMods: Record<string, ForgeMod> = {};
+      for (const [id, mod] of Object.entries(mods)) {
+        cloneMods[id] = { ...mod, s: mod.s.map((s) => transformSlot(s, blocked)) };
+      }
+      const cloneWeapon: ForgeWeapon = { ...weapon, s: weapon.s.map((s) => transformSlot(s, blocked)) };
+      return { weapon: cloneWeapon, mods: cloneMods };
+    }
+
+    function transformSlot(slot: ForgeSlot, blocked: Set<string>): ForgeSlot {
+      let items = slot.items.filter((id) => !blocked.has(id) && mods[id]);
+      let req = slot.req;
+
+      if (isSlotKind(slot, 'mag') && settings.mag !== 'any') {
+        const cap = Number(settings.mag);
+        items = items.filter((id) => mods[id]?.cap === cap);
+        req = true;
+      }
+
+      if (isSlotKind(slot, 'optic')) {
+        if (settings.scope !== 'any') {
+          items = items.filter((id) => opticMode(id) === settings.scope);
+          req = items.length > 0;
+        }
+      }
+
+      if (isSlotKind(slot, 'tactical')) {
+        if (settings.tactical === 'off') {
+          items = [];
+          req = false;
+        } else if (settings.tactical === 'on') {
+          items = items.filter(isTactical);
+          req = items.length > 0;
+        }
+      }
+
+      if (settings.suppressed && isSlotKind(slot, 'muzzle')) {
+        const suppressors = items.filter(isSuppressor);
+        if (suppressors.length) {
+          items = suppressors;
+          req = true;
+        }
+      }
+
+      return { ...slot, req, items };
+    }
+
+    function applyPostFilters(input: Build[]): Build[] {
+      const forced = settings.forced;
+      return input.filter((b) => {
+        if (Array.from(settings.blocked).some((id) => b.ids.includes(id))) return false;
+        if (Array.from(forced).some((id) => !b.ids.includes(id))) return false;
+        if (settings.tactical === 'on' && !b.ids.some(isTactical)) return false;
+        if (settings.suppressed && !b.ids.some(isSuppressor)) return false;
+        return true;
+      });
+    }
+
+    function setupBudget() {
+      const minP = builds[0].price;
+      const maxP = builds[builds.length - 1].price;
+      const slider = document.getElementById('budget') as HTMLInputElement;
+      slider.disabled = false;
+      slider.min = String(minP);
+      slider.max = String(maxP);
+      slider.value = String(Math.max(minP, Math.min(DEFAULT_BUDGET, maxP)));
+      document.getElementById('budgetMin')!.textContent = fmtRub(minP);
+      document.getElementById('budgetMax')!.textContent = fmtRub(maxP);
+      document.getElementById('budgetVal')!.textContent = fmtRub(+slider.value);
+      slider.oninput = () => {
+        document.getElementById('budgetVal')!.textContent = fmtRub(+slider.value);
+        const best = bestUnderBudget(builds, +slider.value) || builds[0];
+        select(best);
+        renderRows();
+      };
+    }
+
+    function currentBudget(): number {
+      return +(document.getElementById('budget') as HTMLInputElement).value || Infinity;
+    }
+
+    function eligibleBuilds(): Build[] {
+      const budget = currentBudget();
+      const under = builds.filter((b) => b.price <= budget);
+      return under.length ? under : builds;
+    }
+
+    function pickBuild(kind: string): Build | null {
+      const list = eligibleBuilds();
+      if (!list.length) return null;
+      if (kind === 'budget') return bestUnderBudget(builds, currentBudget()) || list[0];
+      if (kind === 'cheap') return [...list].sort((a, b) => a.price - b.price || b.quality - a.quality)[0];
+      if (kind === 'recoil') return [...list].sort((a, b) => a.recoilV - b.recoilV || a.price - b.price || b.ergo - a.ergo)[0];
+      if (kind === 'ergo') return [...list].sort((a, b) => b.ergo - a.ergo || a.recoilV - b.recoilV || a.price - b.price)[0];
+      return null;
+    }
+
+    function stepSelected(delta: number) {
+      const list = eligibleBuilds().sort((a, b) => a.price - b.price || b.quality - a.quality);
+      if (!list.length) return;
+      const idx = selected ? list.indexOf(selected) : -1;
+      select(list[Math.max(0, Math.min(list.length - 1, idx + delta))]);
+    }
+
+    async function renderChart() {
+      await loadUplot();
+      const el = document.getElementById('chart')!;
+      el.innerHTML = '';
+      const x = chartBuilds.map((b) => b.price);
+      const y = chartBuilds.map((b) => b.quality);
+      let hoverIdx: number | null = null;
+      const opts = {
+        width: el.clientWidth,
+        height: el.clientHeight,
+        legend: { show: false },
+        cursor: { drag: { x: false, y: false }, points: { size: 8 } },
+        scales: { x: { time: false } },
+        axes: [
+          { stroke: '#6b6b73', grid: { stroke: '#1c1c22' },
+            values: (_u: any, vals: number[]) => vals.map((v) => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : String(v)) },
+          { stroke: '#6b6b73', grid: { stroke: '#1c1c22' },
+            values: (_u: any, vals: number[]) => vals.map((v) => v + '%') },
+        ],
+        series: [
+          { label: 'precio', value: (_u: any, v: number) => fmtRub(v) },
+          { label: 'reducción recoil', stroke: '#c9a44c', width: 0,
+            points: { show: true, size: 4, stroke: '#c9a44c', fill: 'rgba(201,164,76,0.5)' },
+            value: (_u: any, v: number) => (v == null ? '-' : v + '%') },
+          { label: 'seleccionada', stroke: '#4ea1d3', width: 0,
+            points: { show: true, size: 9, stroke: '#4ea1d3', fill: '#4ea1d3' } },
+        ],
+        hooks: { setCursor: [(u: any) => { hoverIdx = u.cursor.idx; }] },
+      };
+      chart = new uPlot(opts, [x, y, y.map(() => null)], el);
+      el.addEventListener('click', () => { if (hoverIdx != null && chartBuilds[hoverIdx]) select(chartBuilds[hoverIdx]); });
+    }
+
+    function select(b: Build) {
+      selected = b;
+      if (chart) {
+        const idx = chartBuilds.indexOf(b);
+        const sel = chartBuilds.map((_, i) => (i === idx ? chartBuilds[i].quality : null));
+        chart.setData([chartBuilds.map((x) => x.price), chartBuilds.map((x) => x.quality), sel]);
+      }
+
+      document.getElementById('stats')!.innerHTML = `
+        ${statCard('Retroceso V', `${b.recoilV}`, `-${b.quality}%`)}
+        ${statCard('Retroceso H', `${b.recoilH}`, '')}
+        ${statCard('Ergonomía', `${b.ergo}`, `base ${weapon.e0}`)}
+        ${statCard('Precisión', b.accuracy ? `${b.accuracy > 0 ? '+' : ''}${b.accuracy.toFixed(2)}` : '-', 'MOA')}
+      `;
+      document.getElementById('statBars')!.innerHTML = `
+        ${bar('Ergonomics', b.ergo, Math.max(80, weapon.e0 + 40), '#3fb950')}
+        ${bar('Ver Recoil', weapon.rv - b.recoilV, weapon.rv, '#4ea1d3')}
+        ${bar('Hor Recoil', weapon.rh - b.recoilH, weapon.rh, '#4ea1d3')}
+        ${bar('Price', b.price, builds[builds.length - 1].price, '#c9a44c')}
+      `;
+      document.getElementById('buildPrice')!.textContent = fmtRub(b.price);
+      document.getElementById('partCount')!.textContent = `${b.ids.length} piezas`;
+      document.getElementById('pickTools')!.classList.remove('hidden');
+      updateStepButtons();
+      renderTree(b);
+
+      document.querySelectorAll('#buildRows tr').forEach((tr) => {
+        const active = (tr as HTMLElement).dataset.idx === String(builds.indexOf(b));
+        tr.classList.toggle('bg-bg-hover', active);
+        if (active) tr.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    function updateStepButtons() {
+      const list = eligibleBuilds().sort((a, b) => a.price - b.price || b.quality - a.quality);
+      const idx = selected ? list.indexOf(selected) : -1;
+      (document.getElementById('prevBuild') as HTMLButtonElement).disabled = idx <= 0;
+      (document.getElementById('nextBuild') as HTMLButtonElement).disabled = idx < 0 || idx >= list.length - 1;
+    }
+
+    function renderRows() {
+      if (!builds.length) {
+        document.getElementById('buildRows')!.innerHTML = '';
+        return;
+      }
+      const order = builds.map((b, i) => ({ b, i }));
+      if (sortKey === 'recoil') order.sort((a, z) => a.b.recoilV - z.b.recoilV);
+      else if (sortKey === 'ergo') order.sort((a, z) => z.b.ergo - a.b.ergo);
+      else order.sort((a, z) => a.b.price - z.b.price);
+      const visible = order.slice(0, TABLE_ROW_LIMIT);
+      document.getElementById('tableCount')!.textContent =
+        builds.length > visible.length
+          ? `(${fmtInt(builds.length)}, mostrando ${fmtInt(visible.length)})`
+          : `(${fmtInt(builds.length)})`;
+
+      const tbody = document.getElementById('buildRows')!;
+      tbody.innerHTML = visible.map(({ b, i }, n) => `
+        <tr data-idx="${i}" class="build-row border-b border-bg-border/50 cursor-pointer hover:bg-bg-hover ${selected === b ? 'bg-bg-hover' : ''}">
+          <td class="px-4 py-1.5 text-text-mute">${n + 1}</td>
+          <td class="px-3 py-1.5 text-right text-num text-accent">${fmtRub(b.price)}</td>
+          <td class="px-3 py-1.5 text-right text-num">${b.recoilV} <span class="text-text-mute text-xs">-${b.quality}%</span></td>
+          <td class="px-3 py-1.5 text-right text-num">${b.ergo}</td>
+          <td class="px-3 py-1.5 text-right text-text-dim">${b.ids.length} <span class="text-accent ml-2">select</span></td>
+        </tr>`).join('');
+      tbody.querySelectorAll<HTMLElement>('.build-row').forEach((tr) => {
+        tr.addEventListener('click', () => select(builds[+tr.dataset.idx!]));
+      });
+    }
+
+    interface TreeNode { id: string; slot: string; children: TreeNode[]; }
+    interface FlatPart { id: string; slot: string; }
+
+    function buildTree(b: Build): { roots: TreeNode[]; orphans: string[] } {
+      const set = new Set(b.ids);
+      const used = new Set<string>();
+      const walk = (slots: ForgeSlot[]): TreeNode[] => {
+        const nodes: TreeNode[] = [];
+        for (const s of slots) {
+          const pick = s.items.find((id) => set.has(id) && !used.has(id));
+          if (pick && mods[pick]) {
+            used.add(pick);
+            nodes.push({ id: pick, slot: s.n, children: walk(mods[pick].s) });
+          }
+        }
+        return nodes;
+      };
+      const roots = walk(weapon.s);
+      const orphans = b.ids.filter((id) => !used.has(id));
+      return { roots, orphans };
+    }
+
+    function flatten(nodes: TreeNode[], out: FlatPart[]) {
+      for (const n of nodes) { out.push({ id: n.id, slot: n.slot }); flatten(n.children, out); }
+    }
+
+    function zoneOf(slot: string): 'top' | 'left' | 'right' | 'bottom' {
+      const s = slot.toLowerCase();
+      if (/muzzle|barrel|gas|handguard|hand guard|foregrip|bipod/.test(s)) return 'left';
+      if (/scope|sight|mount|handle|charg|receiver|rail|optic|tactical|laser|light/.test(s)) return 'top';
+      if (/stock|pistol|grip|buffer/.test(s)) return 'right';
+      return 'bottom';
+    }
+
+    function renderTree(b: Build) {
+      const el = document.getElementById('buildTree')!;
+      if (b.ids.length === 0) { el.innerHTML = '<div class="text-text-mute text-sm py-4">Arma base sin mods.</div>'; return; }
+      const { roots, orphans } = buildTree(b);
+      const flat: FlatPart[] = [];
+      flatten(roots, flat);
+      for (const id of orphans) flat.push({ id, slot: '?' });
+
+      const zones: Record<string, FlatPart[]> = { top: [], left: [], right: [], bottom: [] };
+      for (const p of flat) zones[zoneOf(p.slot)].push(p);
+      const zoneHtml = (arr: FlatPart[], justify: string) =>
+        `<div class="flex flex-wrap gap-2 ${justify} items-end">${arr.map(tile).join('')}</div>`;
+
+      const weaponTile = `<div class="flex flex-col items-center px-4">
+        <img src="${weapon.ic}" alt="" class="object-contain" style="max-height:88px" />
+        <div class="text-sm font-semibold mt-1 text-center">${weapon.sn}</div>
+        <div class="text-[11px] text-text-mute text-center">ergo <span class="text-text-dim">${b.ergo}</span> · recoil V <span class="text-text-dim">${b.recoilV}</span></div>
+        <div class="text-[11px] text-accent text-num">${fmtRub(b.price)}</div>
+      </div>`;
+
+      el.innerHTML = `<div class="grid gap-3 items-center justify-items-center mx-auto" style="min-width:620px;max-width:900px;grid-template-columns:1fr auto 1fr;grid-template-areas:'top top top' 'left weapon right' 'bottom bottom bottom'">
+        <div style="grid-area:top">${zoneHtml(zones.top, 'justify-center')}</div>
+        <div style="grid-area:left">${zoneHtml(zones.left, 'justify-end')}</div>
+        <div style="grid-area:weapon">${weaponTile}</div>
+        <div style="grid-area:right">${zoneHtml(zones.right, 'justify-start')}</div>
+        <div style="grid-area:bottom">${zoneHtml(zones.bottom, 'justify-center')}</div>
+      </div>`;
+    }
+
+    function tile(part: FlatPart): string {
+      const m = mods[part.id];
+      if (!m) return '';
+      return `<div class="flex flex-col items-center" style="width:74px">
+        ${badges(m)}
+        <a href="/item/${part.id}/" title="${m.n} · ${part.slot} · ${fmtRub(m.p)}"
+           class="bg-bg-card border border-bg-border rounded flex items-center justify-center hover:border-accent transition-colors"
+           style="width:74px;height:60px">
+          <img src="${m.ic}" alt="" loading="lazy" class="object-contain" style="max-width:62px;max-height:50px" />
+        </a>
+        <div class="text-center mt-0.5 leading-tight truncate" style="width:74px;font-size:10px">${m.sn || m.n}</div>
+      </div>`;
+    }
+
+    function buildCatalog(): CatalogItem[] {
+      const seen = new Set<string>();
+      const out: CatalogItem[] = [];
+      const visit = (slots: ForgeSlot[]) => {
+        for (const s of slots) for (const id of s.items) {
+          const m = mods[id];
+          if (!m || seen.has(id)) continue;
+          seen.add(id);
+          out.push({ id, n: m.n, sn: m.sn, ic: m.ic });
+          visit(m.s);
+        }
+      };
+      visit(weapon.s);
+      return out.sort((a, b) => (a.sn || a.n).localeCompare(b.sn || b.n));
+    }
+
+    function isSlotKind(slot: ForgeSlot, kind: 'mag' | 'optic' | 'tactical' | 'muzzle') {
+      const s = slot.n.toLowerCase();
+      if (kind === 'mag') return /mag/.test(s);
+      if (kind === 'optic') return /scope|sight|optic/.test(s);
+      if (kind === 'tactical') return /tactical|flashlight|light|laser|device/.test(s);
+      return /muzzle/.test(s);
+    }
+
+    function cats(id: string) { return mods[id]?.c || []; }
+    function hasCat(id: string, re: RegExp) { return cats(id).some((c) => re.test(c)); }
+    function opticMode(id: string): ScopeMode {
+      const name = `${mods[id]?.n || ''} ${mods[id]?.sn || ''}`.toLowerCase();
+      if (hasCat(id, /reflex|holo|collimator|ironsight/) || /reflex|holo|collimator|iron/.test(name)) return 'close';
+      if (hasCat(id, /assault-scope|special-scope/) || /1x|2x|3x|4x|compact|prism|elcan|bravo|hamr/.test(name)) return 'mid';
+      return 'range';
+    }
+    function isTactical(id: string) {
+      const name = `${mods[id]?.n || ''} ${mods[id]?.sn || ''}`.toLowerCase();
+      return hasCat(id, /flashlight|laser|tactical/) || /laser|light|tactical|dbal|peq|x400|baldr|klesch|perst/.test(name);
+    }
+    function isSuppressor(id: string) {
+      const name = `${mods[id]?.n || ''} ${mods[id]?.sn || ''}`.toLowerCase();
+      return /suppressor|silencer|sound suppressor/.test(name);
+    }
+
+    function badge(txt: string, good: boolean): string {
+      const bg = good ? '#1f3a26' : '#3a1f1f', fg = good ? '#7bd88f' : '#e08a7a';
+      return `<span class="leading-4 px-1 rounded" style="font-size:9px;background:${bg};color:${fg}">${txt}</span>`;
+    }
+    function badges(m: ForgeMod): string {
+      const b: string[] = [];
+      if (m.e) b.push(badge(`${m.e > 0 ? '+' : ''}${m.e}`, m.e > 0));
+      if (m.r) b.push(badge(`${m.r < 0 ? '' : '+'}${(m.r * 100).toFixed(0)}%`, m.r < 0));
+      return `<div class="flex gap-0.5 justify-center h-4 mb-0.5">${b.join('')}</div>`;
+    }
+    function statCard(label: string, value: string, sub: string) {
+      return `<div class="bg-bg-card border border-bg-border rounded px-3 py-2">
+        <div class="text-xs text-text-mute">${label}</div>
+        <div class="text-num text-lg">${value}</div>
+        <div class="text-xs text-text-dim">${sub}</div>
+      </div>`;
+    }
+    function bar(label: string, value: number, max: number, color: string) {
+      const pct = Math.max(0, Math.min(100, (value / Math.max(max, 1)) * 100));
+      return `<div>
+        <div class="flex justify-between text-[11px] text-text-mute"><span>${label}</span><span class="text-text-dim text-num">${Math.round(value)}</span></div>
+        <div class="h-2 bg-bg-card border border-bg-border rounded overflow-hidden"><div class="h-full" style="width:${pct}%;background:${color}"></div></div>
+      </div>`;
+    }
+
+    function renderReady() {
+      if (chart) { chart.destroy(); chart = null; }
+      builds = [];
+      chartBuilds = [];
+      selected = null;
+      document.getElementById('chart')!.innerHTML =
+        '<div class="h-full flex items-center justify-center text-text-mute text-sm">Configura los filtros y pulsa Generate builds.</div>';
+      document.getElementById('genInfo')!.innerHTML =
+        `Presupuesto por defecto: <span class="text-accent text-num">${fmtRub(DEFAULT_BUDGET)}</span>.<br>` +
+        `Búsqueda máxima: <span class="text-accent text-num">${fmtInt(BUILD_LIMIT)}</span> builds.`;
+      document.getElementById('buildCount')!.textContent = 'sin generar';
+      document.getElementById('tableCount')!.textContent = '(sin generar)';
+      document.getElementById('stats')!.innerHTML = '';
+      document.getElementById('statBars')!.innerHTML = '';
+      document.getElementById('pickTools')!.classList.add('hidden');
+      document.getElementById('buildTree')!.innerHTML = '';
+      document.getElementById('buildRows')!.innerHTML = '';
+      document.getElementById('partCount')!.textContent = '';
+      document.getElementById('buildPrice')!.textContent = '';
+      document.getElementById('budgetVal')!.textContent = fmtRub(DEFAULT_BUDGET);
+      document.getElementById('budgetMin')!.textContent = '-';
+      document.getElementById('budgetMax')!.textContent = '-';
+      const slider = document.getElementById('budget') as HTMLInputElement;
+      slider.disabled = true;
+      slider.min = '0';
+      slider.max = '0';
+      slider.value = '0';
+    }
+
+    function renderEmpty() {
+      if (chart) { chart.destroy(); chart = null; }
+      document.getElementById('chart')!.innerHTML = '<div class="h-full flex items-center justify-center text-text-mute text-sm">No hay builds compatibles con estos filtros.</div>';
+      document.getElementById('stats')!.innerHTML = '';
+      document.getElementById('statBars')!.innerHTML = '';
+      document.getElementById('pickTools')!.classList.add('hidden');
+      document.getElementById('buildTree')!.innerHTML = '';
+      document.getElementById('buildRows')!.innerHTML = '';
+      document.getElementById('partCount')!.textContent = '';
+      document.getElementById('buildPrice')!.textContent = '';
+      document.getElementById('budgetVal')!.textContent = '';
+      document.getElementById('budgetMin')!.textContent = '';
+      document.getElementById('budgetMax')!.textContent = '';
+      (document.getElementById('budget') as HTMLInputElement).disabled = true;
+    }
+
+    let resizeTimer: any;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { if (builds.length) renderChart().then(() => selected && select(selected)); }, 200);
+    });
+
+    main();
+  </script>
+</Base>

@@ -1,0 +1,300 @@
+---
+import Base from '../../layouts/Base.astro';
+import items from '../../data/items.json';
+import forge from '../../data/forge.json';
+
+const forgeIds = (forge as any).weapons.map((w: any) => w.id);
+
+export async function getStaticPaths() {
+  // Generate both /item/<normalizedName>/ and /item/<id>/ routes
+  const data = items as any[];
+  const seen = new Set<string>();
+  const paths: { params: { name: string } }[] = [];
+  for (const it of data) {
+    for (const key of [it.nn, it.id]) {
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        paths.push({ params: { name: key } });
+      }
+    }
+  }
+  return paths;
+}
+---
+<Base title="Item — TarkovDB" active="market">
+  <a href="/" class="text-text-mute hover:text-accent text-sm mb-2 inline-block">← Market</a>
+
+  <div id="loading" class="text-text-mute py-12 text-center">Loading item…</div>
+
+  <div id="content" class="hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 mb-6">
+      <div class="bg-bg-elev border border-bg-border rounded p-4 flex flex-col items-center">
+        <img id="itemImg" alt="" class="max-w-full max-h-48 object-contain mb-3" />
+        <h1 id="itemName" class="text-xl font-semibold text-center mb-1"></h1>
+        <div id="itemShort" class="text-text-mute text-sm"></div>
+        <div id="itemDims" class="text-text-mute text-xs mt-2"></div>
+        <a id="wikiLink" target="_blank" rel="noopener" class="mt-3 text-xs text-accent hover:underline">wiki ↗</a>
+        <a id="forgeLink" class="hidden mt-3 w-full text-center bg-accent text-bg font-medium text-sm rounded px-3 py-2 hover:opacity-90">⚒ Generar build</a>
+      </div>
+      <script id="forgeIds" type="application/json" set:html={JSON.stringify(forgeIds)}></script>
+
+      <div class="bg-bg-elev border border-bg-border rounded p-4">
+        <div id="stats" class="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4"></div>
+        <div class="mb-2 flex items-center justify-between">
+          <h3 class="text-sm text-text-dim">Price history</h3>
+          <div class="flex gap-1 text-xs">
+            <button data-range="7"   class="rng-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">7d</button>
+            <button data-range="30"  class="rng-btn px-2 py-0.5 rounded bg-accent text-bg border border-accent">30d</button>
+            <button data-range="180" class="rng-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">180d</button>
+            <button data-range="all" class="rng-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">all</button>
+          </div>
+        </div>
+        <div id="demand" class="text-xs text-text-mute mb-2"></div>
+        <div id="chart" class="h-64 relative">
+          <div id="chartLoading" class="absolute inset-0 flex items-center justify-center text-text-mute text-sm">Loading price history…</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div class="bg-bg-elev border border-bg-border rounded p-4">
+        <h3 class="text-sm text-text-dim mb-3">Buy from traders</h3>
+        <div id="buyFrom" class="space-y-1"></div>
+      </div>
+      <div class="bg-bg-elev border border-bg-border rounded p-4">
+        <h3 class="text-sm text-text-dim mb-3">Sell to traders</h3>
+        <div id="sellFor" class="space-y-1"></div>
+      </div>
+    </div>
+
+    <section id="sourcesSection" class="mb-6 hidden">
+      <h2 class="text-base font-semibold mb-3 text-text-dim">Obtain through</h2>
+      <div id="sources" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+    </section>
+  </div>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css" />
+  <script>
+    const mode = (localStorage.getItem('tdb-mode') || 'pve') as 'pve' | 'pvp';
+    // Get item name from URL: /item/<name>/
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    const name = decodeURIComponent(parts[parts.length - 1] || '');
+
+    type Item = any;
+    let item: Item | null = null;
+    let allData: Array<{ t: number; price: number; min: number; offers: number | null }> = [];
+    let uPlot: any;
+    let chart: any;
+
+    const fmtRub = (n?: number) => (n == null || !isFinite(n)) ? '—' : n.toLocaleString() + ' ₽';
+
+    async function loadUplot() {
+      if (uPlot) return uPlot;
+      const mod: any = await import('https://cdn.jsdelivr.net/npm/uplot@1.6.30/+esm');
+      uPlot = mod.default;
+      return uPlot;
+    }
+
+    async function loadAll() {
+      async function fetchItems() {
+        try {
+          const r = await fetch(`/api/items?mode=${mode}`);
+          if (r.ok) return r.json();
+        } catch {}
+        return fetch('/data/items.json').then((r) => r.json());
+      }
+      const [itemsRes, bartersRes, craftsRes] = await Promise.all([
+        fetchItems(),
+        fetch('/data/barters.json').then((r) => r.json()),
+        fetch('/data/crafts.json').then((r) => r.json()),
+      ]);
+      const items: Item[] = itemsRes;
+      item = items.find((it) => it.nn === name) || items.find((it) => it.id === name) || null;
+      if (!item) {
+        document.getElementById('loading')!.textContent = 'Item not found.';
+        return;
+      }
+      document.getElementById('loading')!.classList.add('hidden');
+      document.getElementById('content')!.classList.remove('hidden');
+      document.title = `${item.n} — TarkovDB`;
+
+      (document.getElementById('itemImg') as HTMLImageElement).src = item.ic;
+      document.getElementById('itemName')!.textContent = item.n;
+      document.getElementById('itemShort')!.textContent = item.sn || '';
+      document.getElementById('itemDims')!.textContent = `${item.w}×${item.h} · ${item.wt}kg`;
+      (document.getElementById('wikiLink') as HTMLAnchorElement).href = item.wk;
+
+      // Show FORGE build generator link for weapons covered by the optimizer
+      try {
+        const forgeIds: string[] = JSON.parse(document.getElementById('forgeIds')!.textContent || '[]');
+        if (forgeIds.includes(item.id)) {
+          const fl = document.getElementById('forgeLink') as HTMLAnchorElement;
+          fl.href = `/forge/${item.id}/`;
+          fl.classList.remove('hidden');
+        }
+      } catch {}
+
+      document.getElementById('stats')!.innerHTML = `
+        <div class="text-center"><div class="text-xs text-text-mute">Avg 24h</div><div class="text-num text-lg text-accent">${fmtRub(item.a24)}</div></div>
+        <div class="text-center"><div class="text-xs text-text-mute">Low 24h</div><div class="text-num text-lg">${fmtRub(item.l24)}</div></div>
+        <div class="text-center"><div class="text-xs text-text-mute">High 24h</div><div class="text-num text-lg">${fmtRub(item.h24)}</div></div>
+        <div class="text-center"><div class="text-xs text-text-mute">Last Low</div><div class="text-num text-lg">${fmtRub(item.llp)}</div></div>
+        <div class="text-center"><div class="text-xs text-text-mute">Base</div><div class="text-num text-lg text-text-dim">${fmtRub(item.bp)}</div></div>
+      `;
+
+      const sellFor = (item.sf || []).slice().sort((a: any, b: any) => b.p - a.p);
+      const buyFrom = item.bf || [];
+      document.getElementById('sellFor')!.innerHTML =
+        sellFor.length === 0
+          ? '<div class="text-text-mute text-sm">Not bought by traders.</div>'
+          : sellFor.map((s: any) => `
+            <div class="flex justify-between items-center px-2 py-1.5 rounded hover:bg-bg-hover">
+              <span class="capitalize text-sm">${s.v}</span>
+              <span class="text-num text-sm text-accent">${fmtRub(s.p)}</span>
+            </div>`).join('');
+      document.getElementById('buyFrom')!.innerHTML =
+        buyFrom.length === 0
+          ? '<div class="text-text-mute text-sm">Not sold by traders.</div>'
+          : buyFrom.map((b: any) => `
+            <div class="flex justify-between items-center px-2 py-1.5 rounded hover:bg-bg-hover">
+              <span class="capitalize text-sm">${b.v}</span>
+              <span class="text-num text-sm text-accent">${fmtRub(b.p)}</span>
+            </div>`).join('');
+
+      // Sources (barters + crafts that produce this item)
+      const barters: any[] = bartersRes;
+      const crafts: any[] = craftsRes;
+      const fromBarters = barters.filter((b) => (b.rewardItems || []).some((r: any) => r.item.id === item!.id));
+      const fromCrafts = crafts.filter((c) => (c.rewardItems || []).some((r: any) => r.item.id === item!.id));
+      if (fromBarters.length || fromCrafts.length) {
+        document.getElementById('sourcesSection')!.classList.remove('hidden');
+        const html = [
+          ...fromBarters.slice(0, 12).map((b) => `
+            <div class="bg-bg-elev border border-bg-border rounded p-3">
+              <div class="text-xs text-text-mute mb-2 capitalize">Barter · ${b.trader.normalizedName} L${b.level}</div>
+              <div class="flex items-center gap-2 flex-wrap">
+                ${b.requiredItems.map((r: any) => `
+                  <a href="/item/${r.item.id}/" class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
+                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <span>${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
+                  </a>`).join('')}
+                <span class="text-text-mute">→</span>
+                ${b.rewardItems.map((r: any) => `
+                  <span class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
+                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <span class="text-accent">${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
+                  </span>`).join('')}
+              </div>
+            </div>`),
+          ...fromCrafts.slice(0, 12).map((c) => `
+            <div class="bg-bg-elev border border-bg-border rounded p-3">
+              <div class="text-xs text-text-mute mb-2 capitalize">Craft · ${c.station.normalizedName} L${c.level} · ${Math.round(c.duration/60)}min</div>
+              <div class="flex items-center gap-2 flex-wrap">
+                ${c.requiredItems.map((r: any) => `
+                  <span class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
+                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <span>${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
+                  </span>`).join('')}
+                <span class="text-text-mute">→</span>
+                ${c.rewardItems.map((r: any) => `
+                  <span class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
+                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <span class="text-accent">${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
+                  </span>`).join('')}
+              </div>
+            </div>`),
+        ].join('');
+        document.getElementById('sources')!.innerHTML = html;
+      }
+
+      loadHistory();
+    }
+
+    async function loadHistory() {
+      const path = mode === 'pve' ? 'pve' : 'regular';
+      try {
+        const res = await fetch(`https://json.tarkov.dev/${path}/prices/${item!.id}`);
+        if (!res.ok) return;
+        const j = await res.json();
+        allData = (j.data || []).map((p: any) => ({
+          t: Math.floor(p.timestamp / 1000),
+          price: p.price || 0,
+          min: p.priceMin || 0,
+          offers: typeof p.offerCount === 'number' ? p.offerCount : null,
+        }));
+        document.getElementById('chartLoading')!.style.display = 'none';
+        render(30);
+      } catch (e) { console.error(e); }
+    }
+
+    async function render(range: number | 'all') {
+      await loadUplot();
+      const now = Math.floor(Date.now() / 1000);
+      let pts = allData;
+      if (range !== 'all') pts = allData.filter((p) => p.t > now - (range as number) * 86400);
+      if (!pts.length) return;
+      const x = pts.map((p) => p.t);
+      const y1 = pts.map((p) => p.price);
+      const y2 = pts.map((p) => p.min);
+      const y3 = pts.map((p) => p.offers);
+
+      // Demand / liquidity readout for the selected range
+      const offerPts = pts.filter((p) => p.offers != null) as Array<{ offers: number }>;
+      const demandEl = document.getElementById('demand')!;
+      if (offerPts.length) {
+        const latest = offerPts[offerPts.length - 1].offers;
+        const avg = Math.round(offerPts.reduce((s, p) => s + p.offers, 0) / offerPts.length);
+        const min = Math.min(...offerPts.map((p) => p.offers));
+        const max = Math.max(...offerPts.map((p) => p.offers));
+        const label = range === 'all' ? 'todo' : `${range}d`;
+        const tier = avg < 10 ? ['Baja', '#d35a4e'] : avg < 40 ? ['Media', '#c9a44c'] : ['Alta', '#5aa86b'];
+        demandEl.innerHTML =
+          `Ofertas en flea (${label}): ahora <span class="text-num text-text-dim">${latest}</span> · ` +
+          `medio <span class="text-num text-text-dim">${avg}</span> · ` +
+          `min ${min} / max ${max} · ` +
+          `<span style="color:${tier[1]}">liquidez ${tier[0]}</span>`;
+      } else {
+        demandEl.textContent = 'Sin datos de ofertas para este rango.';
+      }
+
+      const el = document.getElementById('chart')!;
+      el.innerHTML = '';
+      const opts = {
+        width: el.clientWidth,
+        height: el.clientHeight,
+        cursor: { drag: { x: true, y: false } },
+        scales: { x: { time: true }, y: {}, o: {} },
+        axes: [
+          { stroke: '#6b6b73', grid: { stroke: '#1c1c22' } },
+          { scale: 'y', stroke: '#6b6b73', grid: { stroke: '#1c1c22' },
+            values: (_u: any, vals: number[]) => vals.map((v) => v >= 1000 ? (v/1000).toFixed(0) + 'k' : String(v)) },
+          { scale: 'o', side: 1, stroke: '#5aa86b', grid: { show: false } },
+        ],
+        series: [
+          {},
+          { scale: 'y', label: 'avg', stroke: '#c9a44c', width: 1.5, fill: 'rgba(201,164,76,0.08)' },
+          { scale: 'y', label: 'min', stroke: '#4ea1d3', width: 1 },
+          { scale: 'o', label: 'ofertas', stroke: '#5aa86b', width: 1, dash: [4, 3] },
+        ],
+      };
+      chart = new uPlot(opts, [x, y1, y2, y3], el);
+    }
+
+    document.querySelectorAll<HTMLButtonElement>('.rng-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('.rng-btn').forEach((x) => (x as HTMLElement).className = 'rng-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border');
+        b.className = 'rng-btn px-2 py-0.5 rounded bg-accent text-bg border border-accent';
+        const r = b.dataset.range!;
+        render(r === 'all' ? 'all' : parseInt(r));
+      });
+    });
+
+    let resizeTimer: any;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => { if (allData.length) render(30); }, 200);
+    });
+
+    loadAll();
+  </script>
+</Base>

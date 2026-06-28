@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/items?mode=pve",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/items?mode=pvp",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

@@ -1,0 +1,234 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base title="Market — TarkovDB" active="market">
+  <div class="flex flex-wrap items-center gap-2 mb-3">
+    <div class="flex items-center gap-2 flex-1 min-w-[280px]">
+      <input id="filter" type="text" placeholder="Filter visible rows…"
+             class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-72 focus:outline-none focus:border-accent" />
+      <select id="catFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+        <option value="">All categories</option>
+      </select>
+      <div class="flex items-center gap-1 text-xs">
+        <span class="text-text-mute">Sort:</span>
+        <select id="sortBy" class="bg-bg-card border border-bg-border rounded px-2 py-1 text-sm">
+          <option value="a24">Avg 24h ↓</option>
+          <option value="l24">Low 24h ↓</option>
+          <option value="h24">High 24h ↓</option>
+          <option value="llp">Last Low ↓</option>
+          <option value="ch">Change 48h ↓</option>
+          <option value="profit">Trader profit ↓</option>
+          <option value="n">Name A→Z</option>
+        </select>
+      </div>
+    </div>
+    <div id="status" class="text-xs text-text-mute"></div>
+  </div>
+
+  <div class="border border-bg-border rounded bg-bg-elev overflow-hidden">
+    <div class="grid grid-cols-[56px_1fr_100px_90px_90px_100px_100px_140px_80px] text-xs text-text-mute border-b border-bg-border bg-bg-card">
+      <div class="px-2 py-2"></div>
+      <div class="px-2 py-2">Item</div>
+      <div class="px-2 py-2 text-right">Avg 24h</div>
+      <div class="px-2 py-2 text-right">Low 24h</div>
+      <div class="px-2 py-2 text-right">High 24h</div>
+      <div class="px-2 py-2 text-right">Last Low</div>
+      <div class="px-2 py-2 text-right">Δ 48h</div>
+      <div class="px-2 py-2 text-right">Best Trader</div>
+      <div class="px-2 py-2 text-center">7d</div>
+    </div>
+    <div id="virtualScroller" class="overflow-auto" style="height: calc(100vh - 220px); position: relative;">
+      <div id="virtualSpacer" style="position: relative;"></div>
+    </div>
+  </div>
+
+  <script>
+    type Item = {
+      id: string; n: string; sn?: string; nn: string;
+      bp?: number; a24?: number; l24?: number; h24?: number; llp?: number; ch?: number;
+      ic?: string; t?: string[]; c?: string[];
+      sf?: Array<{ v: string; p: number; pr: number; c: string }>;
+    };
+
+    const ROW_H = 56;
+    let items: Item[] = [];
+    let view: Item[] = [];
+    let mode = (localStorage.getItem('tdb-mode') || 'pve') as 'pve' | 'pvp';
+
+    const scroller = document.getElementById('virtualScroller') as HTMLDivElement;
+    const spacer   = document.getElementById('virtualSpacer') as HTMLDivElement;
+    const status   = document.getElementById('status') as HTMLDivElement;
+    const filterEl = document.getElementById('filter') as HTMLInputElement;
+    const catEl    = document.getElementById('catFilter') as HTMLSelectElement;
+    const sortEl   = document.getElementById('sortBy') as HTMLSelectElement;
+
+    const fmtRub = (n?: number | null) => (n == null || !isFinite(n)) ? '—' : n.toLocaleString() + ' ₽';
+    function bestProfit(it: Item) {
+      if (!it.sf || !it.sf.length) return { name: '', price: 0 };
+      let best = it.sf[0];
+      for (const s of it.sf) if (s.p > best.p) best = s;
+      return { name: best.v.charAt(0).toUpperCase() + best.v.slice(1), price: best.p };
+    }
+    const chClass = (ch?: number) => !ch ? 'flat' : ch > 0 ? 'up' : 'down';
+
+    async function loadItems() {
+      status.textContent = 'Loading items…';
+      let res: Response;
+      try {
+        res = await fetch(`/api/items?mode=${mode}`);
+        if (!res.ok) throw new Error('api failed');
+      } catch {
+        res = await fetch('/data/items.json');
+      }
+      items = await res.json();
+      const cats = new Set<string>();
+      for (const it of items) for (const c of (it.c || [])) cats.add(c);
+      catEl.insertAdjacentHTML('beforeend',
+        Array.from(cats).sort().map((c) => `<option value="${c}">${c.replace(/-/g, ' ')}</option>`).join('')
+      );
+      status.textContent = `${items.length.toLocaleString()} items`;
+      applyFilters();
+      refreshLive();
+    }
+
+    async function refreshLive() {
+      try {
+        const url = mode === 'pve'
+          ? 'https://eft-cdn.dvcstudiox.workers.dev/json/realtime/market_dev_pve.json'
+          : 'https://eft-cdn.dvcstudiox.workers.dev/json/realtime/market_dev_pvp.json';
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        const arr = data.data?.items || data.items || [];
+        const live: Record<string, any> = {};
+        for (const r of arr) live[r.id] = r;
+        for (const it of items) {
+          const lv = live[it.id];
+          if (!lv) continue;
+          if (lv.avg24hPrice) it.a24 = lv.avg24hPrice;
+          if (lv.lastLowPrice) it.llp = lv.lastLowPrice;
+        }
+        status.textContent = `${items.length.toLocaleString()} items · live ${mode.toUpperCase()} prices`;
+        applyFilters();
+      } catch (e) { console.warn('live prices:', e); }
+    }
+
+    function applyFilters() {
+      const q = filterEl.value.trim().toLowerCase();
+      const cat = catEl.value;
+      view = items.filter((it) => {
+        if (cat && !(it.c || []).includes(cat)) return false;
+        if (!q) return true;
+        return it.n.toLowerCase().includes(q) || (it.sn || '').toLowerCase().includes(q);
+      });
+      const sb = sortEl.value;
+      view.sort((a, b) => {
+        if (sb === 'n') return a.n.localeCompare(b.n);
+        if (sb === 'ch') return (b.ch ?? -Infinity) - (a.ch ?? -Infinity);
+        if (sb === 'profit') return bestProfit(b).price - bestProfit(a).price;
+        if (sb === 'llp') return (b.llp ?? 0) - (a.llp ?? 0);
+        if (sb === 'l24') return (b.l24 ?? 0) - (a.l24 ?? 0);
+        if (sb === 'h24') return (b.h24 ?? 0) - (a.h24 ?? 0);
+        return (b.a24 ?? 0) - (a.a24 ?? 0);
+      });
+      spacer.style.height = (view.length * ROW_H) + 'px';
+      render();
+    }
+
+    async function fetchSpark(id: string): Promise<number[] | null> {
+      const k = `spark:${mode}:${id}`;
+      const cached = sessionStorage.getItem(k);
+      if (cached) try { return JSON.parse(cached); } catch {}
+      try {
+        const path = mode === 'pve' ? 'pve' : 'regular';
+        const res = await fetch(`https://json.tarkov.dev/${path}/prices/${id}`);
+        if (!res.ok) return null;
+        const j = await res.json();
+        const series = (j.data || []).slice(-50).map((p: any) => p.price || p.priceMin || 0);
+        sessionStorage.setItem(k, JSON.stringify(series));
+        return series;
+      } catch { return null; }
+    }
+    function drawSpark(canvas: HTMLCanvasElement, values: number[]) {
+      const w = canvas.width = canvas.clientWidth * devicePixelRatio;
+      const h = canvas.height = canvas.clientHeight * devicePixelRatio;
+      const ctx = canvas.getContext('2d')!;
+      ctx.clearRect(0, 0, w, h);
+      if (values.length < 2) return;
+      const min = Math.min(...values), max = Math.max(...values);
+      const range = max - min || 1;
+      ctx.strokeStyle = values[values.length - 1] >= values[0] ? '#3fb950' : '#f85149';
+      ctx.lineWidth = 1.5 * devicePixelRatio;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = (i / (values.length - 1)) * w;
+        const y = h - ((v - min) / range) * h;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function render() {
+      const top = scroller.scrollTop;
+      const winH = scroller.clientHeight;
+      const start = Math.max(0, Math.floor(top / ROW_H) - 5);
+      const end = Math.min(view.length, Math.ceil((top + winH) / ROW_H) + 5);
+      Array.from(spacer.children).forEach((c) => c.remove());
+      const frag = document.createDocumentFragment();
+      for (let i = start; i < end; i++) {
+        const it = view[i];
+        const row = document.createElement('div');
+        row.className = 'grid grid-cols-[56px_1fr_100px_90px_90px_100px_100px_140px_80px] row-hover border-b border-bg-border';
+        row.style.position = 'absolute';
+        row.style.top = (i * ROW_H) + 'px';
+        row.style.left = '0'; row.style.right = '0';
+        row.style.height = ROW_H + 'px';
+        const bt = bestProfit(it);
+        const ch = it.ch;
+        row.innerHTML = `
+          <a href="/item/${it.nn}/" class="flex items-center justify-center">
+            <img src="${it.ic}" alt="" loading="lazy" class="max-w-12 max-h-12 object-contain" />
+          </a>
+          <a href="/item/${it.nn}/" class="flex flex-col justify-center px-2 min-w-0">
+            <div class="text-sm truncate">${it.n}</div>
+            <div class="text-xs text-text-mute truncate">${it.sn || ''}</div>
+          </a>
+          <div class="flex items-center justify-end px-2 text-num text-sm">${fmtRub(it.a24)}</div>
+          <div class="flex items-center justify-end px-2 text-num text-sm text-text-dim">${fmtRub(it.l24)}</div>
+          <div class="flex items-center justify-end px-2 text-num text-sm text-text-dim">${fmtRub(it.h24)}</div>
+          <div class="flex items-center justify-end px-2 text-num text-sm">${fmtRub(it.llp)}</div>
+          <div class="flex items-center justify-end px-2 text-num text-sm ${chClass(ch)}">${ch != null ? (ch > 0 ? '+' : '') + ch.toFixed(2) + '%' : '—'}</div>
+          <div class="flex items-center justify-end px-2 text-sm">
+            <span class="text-text-dim mr-1 truncate">${bt.name}</span>
+            <span class="text-num text-accent">${fmtRub(bt.price)}</span>
+          </div>
+          <div class="flex items-center justify-center px-1">
+            <canvas data-id="${it.id}" class="w-[80px] h-[36px]"></canvas>
+          </div>
+        `;
+        frag.appendChild(row);
+      }
+      spacer.appendChild(frag);
+      spacer.querySelectorAll<HTMLCanvasElement>('canvas[data-id]').forEach(async (cv) => {
+        const data = await fetchSpark(cv.dataset.id!);
+        if (data && data.length) drawSpark(cv, data);
+      });
+    }
+
+    let rafId = 0;
+    scroller.addEventListener('scroll', () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(render);
+    });
+    filterEl.addEventListener('input', () => {
+      clearTimeout((filterEl as any)._t);
+      (filterEl as any)._t = setTimeout(applyFilters, 80);
+    });
+    catEl.addEventListener('change', applyFilters);
+    sortEl.addEventListener('change', applyFilters);
+    window.addEventListener('mode-change', (e: any) => {
+      mode = e.detail; sessionStorage.clear(); refreshLive();
+    });
+    loadItems();
+  </script>
+</Base>

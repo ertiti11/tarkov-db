@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background: #0a0a0b;
+  color: #e6e6e6;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #0a0a0b; }
+::-webkit-scrollbar-thumb { background: #26262e; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a44; }
+
+/* uPlot theming */
+.uplot, .u-wrap { font-family: ui-monospace, monospace !important; }
+.u-axis { color: #6b6b73 !important; }
+.u-legend { color: #9b9ba1 !important; font-size: 11px; }
+.u-cursor-pt { border-color: #c9a44c !important; background: #c9a44c !important; }
+
+/* Sparkline canvas crispness */
+canvas { image-rendering: crisp-edges; }
+
+/* Subtle row hover */
+.row-hover:hover { background: #1c1c22; }
+
+@layer utilities {
+  .text-num { font-variant-numeric: tabular-nums; }
+}
+
+/* Trend colors */
+.up   { color: #3fb950; }
+.down { color: #f85149; }
+.flat { color: #6b6b73; }
+
+/* Loading shimmer */
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+.shimmer {
+  background: linear-gradient(90deg, #15151a 0%, #26262e 50%, #15151a 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}

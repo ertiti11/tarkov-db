@@ -1,0 +1,79 @@
+---
+import Base from '../layouts/Base.astro';
+import ammo from '../data/ammo.json';
+
+// Group by caliber
+const byCaliber: Record<string, any[]> = {};
+for (const a of ammo as any[]) {
+  const cal = a.caliber || 'Other';
+  (byCaliber[cal] ||= []).push(a);
+}
+for (const cal of Object.keys(byCaliber)) {
+  byCaliber[cal].sort((a, b) => (b.penetrationPower || 0) - (a.penetrationPower || 0));
+}
+const calibers = Object.keys(byCaliber).sort();
+---
+<Base title="Ammo — TarkovDB" active="ammo">
+  <div class="flex items-center gap-2 mb-3">
+    <input id="filter" type="text" placeholder="Filter by name…"
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+    <select id="calFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+      <option value="">All calibers</option>
+      {calibers.map((c) => <option value={c}>{c.replace('Caliber', '').replace(/([A-Z])/g, ' $1').trim()}</option>)}
+    </select>
+  </div>
+
+  {calibers.map((cal) => (
+    <section class="cal-section mb-6" data-caliber={cal}>
+      <h2 class="text-sm font-semibold mb-2 text-accent uppercase tracking-wide">
+        {cal.replace('Caliber', '').replace(/([A-Z])/g, ' $1').trim()}
+      </h2>
+      <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+        <div class="grid grid-cols-[40px_1fr_70px_70px_70px_70px_70px_90px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
+          <div class="px-2 py-1.5"></div>
+          <div class="px-2 py-1.5">Name</div>
+          <div class="px-2 py-1.5 text-right">Damage</div>
+          <div class="px-2 py-1.5 text-right">Pen</div>
+          <div class="px-2 py-1.5 text-right">Armor Δ</div>
+          <div class="px-2 py-1.5 text-right">Frag %</div>
+          <div class="px-2 py-1.5 text-right">m/s</div>
+          <div class="px-2 py-1.5 text-right">Flea</div>
+        </div>
+        {byCaliber[cal].map((a) => (
+          <div class="ammo-row grid grid-cols-[40px_1fr_70px_70px_70px_70px_70px_90px] text-sm border-b border-bg-border row-hover" data-name={(a.item.name || '').toLowerCase()}>
+            <div class="flex items-center justify-center"><img src={a.item.iconLink} class="w-8 h-8 object-contain" loading="lazy" /></div>
+            <a href={`/item/${a.item.id}/`} class="flex flex-col justify-center px-2 min-w-0">
+              <div class="truncate">{a.item.name}</div>
+              <div class="text-xs text-text-mute">{a.item.shortName}</div>
+            </a>
+            <div class="flex items-center justify-end px-2 text-num">{a.damage}</div>
+            <div class={`flex items-center justify-end px-2 text-num font-semibold ${a.penetrationPower >= 40 ? 'text-accent' : a.penetrationPower >= 30 ? 'text-accent-cool' : ''}`}>{a.penetrationPower}</div>
+            <div class="flex items-center justify-end px-2 text-num">{a.armorDamage}</div>
+            <div class="flex items-center justify-end px-2 text-num text-text-dim">{Math.round((a.fragmentationChance || 0)*100)}%</div>
+            <div class="flex items-center justify-end px-2 text-num text-text-dim">{a.initialSpeed}</div>
+            <div class="flex items-center justify-end px-2 text-num text-accent">{(a.item.avg24hPrice || a.item.lastLowPrice || 0).toLocaleString()} ₽</div>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+
+  <script>
+    const filter = document.getElementById('filter') as HTMLInputElement;
+    const calSel = document.getElementById('calFilter') as HTMLSelectElement;
+    function apply() {
+      const q = filter.value.trim().toLowerCase();
+      const cal = calSel.value;
+      document.querySelectorAll<HTMLElement>('.cal-section').forEach((sec) => {
+        const matches = !cal || sec.dataset.caliber === cal;
+        sec.style.display = matches ? '' : 'none';
+      });
+      document.querySelectorAll<HTMLElement>('.ammo-row').forEach((r) => {
+        const name = r.dataset.name || '';
+        r.style.display = (!q || name.includes(q)) ? '' : 'none';
+      });
+    }
+    filter.addEventListener('input', apply);
+    calSel.addEventListener('change', apply);
+  </script>
+</Base>
