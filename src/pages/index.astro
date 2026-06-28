@@ -73,13 +73,7 @@ import Base from '../layouts/Base.astro';
 
     async function loadItems() {
       status.textContent = 'Loading items…';
-      let res: Response;
-      try {
-        res = await fetch(`/api/items?mode=${mode}`);
-        if (!res.ok) throw new Error('api failed');
-      } catch {
-        res = await fetch('/data/items.json');
-      }
+      const res = await fetch('/data/items.json');
       items = await res.json();
       const cats = new Set<string>();
       for (const it of items) for (const c of (it.c || [])) cats.add(c);
@@ -92,6 +86,33 @@ import Base from '../layouts/Base.astro';
     }
 
     async function refreshLive() {
+      // Try our API endpoint first (cached 1h by Vercel CDN)
+      try {
+        const apiRes = await fetch(`/api/items?mode=${mode}`);
+        if (apiRes.ok) {
+          const prices: any[] = await apiRes.json();
+          if (Array.isArray(prices)) {
+            const map: Record<string, any> = {};
+            for (const p of prices) map[p.id] = p;
+            for (const it of items) {
+              const p = map[it.id];
+              if (!p) continue;
+              if (p.a24) it.a24 = p.a24;
+              if (p.l24) it.l24 = p.l24;
+              if (p.h24) it.h24 = p.h24;
+              if (p.llp) it.llp = p.llp;
+              if (p.ch != null) it.ch = p.ch;
+              if (p.bp) it.bp = p.bp;
+              if (p.sf?.length) it.sf = p.sf;
+              if (p.bf?.length) it.bf = p.bf;
+            }
+            status.textContent = `${items.length.toLocaleString()} items · live ${mode.toUpperCase()} prices`;
+            applyFilters();
+            return;
+          }
+        }
+      } catch {}
+      // Fallback to external CDN
       try {
         const url = mode === 'pve'
           ? 'https://eft-cdn.dvcstudiox.workers.dev/json/realtime/market_dev_pve.json'

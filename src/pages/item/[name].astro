@@ -96,15 +96,8 @@ export async function getStaticPaths() {
     }
 
     async function loadAll() {
-      async function fetchItems() {
-        try {
-          const r = await fetch(`/api/items?mode=${mode}`);
-          if (r.ok) return r.json();
-        } catch {}
-        return fetch('/data/items.json').then((r) => r.json());
-      }
       const [itemsRes, bartersRes, craftsRes] = await Promise.all([
-        fetchItems(),
+        fetch('/data/items.json').then((r) => r.json()),
         fetch('/data/barters.json').then((r) => r.json()),
         fetch('/data/crafts.json').then((r) => r.json()),
       ]);
