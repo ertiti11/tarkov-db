@@ -221,7 +221,10 @@ export async function getStaticPaths() {
       } catch (e) { console.error(e); }
     }
 
+    let currentRange: number | 'all' = 30;
+
     async function render(range: number | 'all') {
+      currentRange = range;
       await loadUplot();
       const now = Math.floor(Date.now() / 1000);
       let pts = allData;
@@ -240,7 +243,7 @@ export async function getStaticPaths() {
         const avg = Math.round(offerPts.reduce((s, p) => s + p.offers, 0) / offerPts.length);
         const min = Math.min(...offerPts.map((p) => p.offers));
         const max = Math.max(...offerPts.map((p) => p.offers));
-        const label = range === 'all' ? 'todo' : `${range}d`;
+        const label = range === 1 ? '24h' : range === 'all' ? 'todo' : `${range}d`;
         const tier = avg < 10 ? ['Baja', '#d35a4e'] : avg < 40 ? ['Media', '#c9a44c'] : ['Alta', '#5aa86b'];
         demandEl.innerHTML =
           `Ofertas en flea (${label}): ahora <span class="text-num text-text-dim">${latest}</span> · ` +
@@ -251,24 +254,51 @@ export async function getStaticPaths() {
         demandEl.textContent = 'Sin datos de ofertas para este rango.';
       }
 
+      const is24h = range === 1;
+
+      // For 24h view: force x-axis to span full 24h window and show hourly ticks
+      const xAxisConfig: any = {
+        stroke: '#6b6b73',
+        grid: { stroke: '#1c1c22' },
+      };
+      if (is24h) {
+        xAxisConfig.space = 50;
+        xAxisConfig.incrs = [3600]; // tick every hour
+        xAxisConfig.values = (_u: any, splits: number[]) =>
+          splits.map((t: number) => {
+            const d = new Date(t * 1000);
+            return d.getHours().toString().padStart(2, '0') + ':00';
+          });
+      }
+
+      const scalesConfig: any = {
+        x: { time: true },
+        y: {},
+        o: {},
+      };
+      if (is24h) {
+        scalesConfig.x.min = now - 86400;
+        scalesConfig.x.max = now;
+      }
+
       const el = document.getElementById('chart')!;
       el.innerHTML = '';
       const opts = {
         width: el.clientWidth,
         height: el.clientHeight,
         cursor: { drag: { x: true, y: false } },
-        scales: { x: { time: true }, y: {}, o: {} },
+        scales: scalesConfig,
         axes: [
-          { stroke: '#6b6b73', grid: { stroke: '#1c1c22' } },
+          xAxisConfig,
           { scale: 'y', stroke: '#6b6b73', grid: { stroke: '#1c1c22' },
             values: (_u: any, vals: number[]) => vals.map((v) => v >= 1000 ? (v/1000).toFixed(0) + 'k' : String(v)) },
           { scale: 'o', side: 1, stroke: '#5aa86b', grid: { show: false } },
         ],
         series: [
           {},
-          { scale: 'y', label: 'avg', stroke: '#c9a44c', width: 1.5, fill: 'rgba(201,164,76,0.08)' },
-          { scale: 'y', label: 'min', stroke: '#4ea1d3', width: 1 },
-          { scale: 'o', label: 'ofertas', stroke: '#5aa86b', width: 1, dash: [4, 3] },
+          { scale: 'y', label: 'avg', stroke: '#c9a44c', width: 1.5, fill: 'rgba(201,164,76,0.08)', points: { show: is24h, size: 4 } },
+          { scale: 'y', label: 'min', stroke: '#4ea1d3', width: 1, points: { show: is24h, size: 4 } },
+          { scale: 'o', label: 'ofertas', stroke: '#5aa86b', width: 1, dash: [4, 3], points: { show: is24h, size: 4 } },
         ],
       };
       chart = new uPlot(opts, [x, y1, y2, y3], el);
@@ -286,7 +316,7 @@ export async function getStaticPaths() {
     let resizeTimer: any;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { if (allData.length) render(30); }, 200);
+      resizeTimer = setTimeout(() => { if (allData.length) render(currentRange); }, 200);
     });
 
     loadAll();
