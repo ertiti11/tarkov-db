@@ -21,7 +21,7 @@ export async function getStaticPaths() {
   return paths;
 }
 ---
-<Base title="Item — TarkovDB" active="market">
+<Base title="Item — Tarkov Helper" active="market">
   <a href="/" class="text-text-mute hover:text-accent text-sm mb-2 inline-block">← Market</a>
 
   <div id="loading" class="text-text-mute py-12 text-center">Loading item…</div>
@@ -29,7 +29,7 @@ export async function getStaticPaths() {
   <div id="content" class="hidden">
     <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4 mb-6">
       <div class="bg-bg-elev border border-bg-border rounded p-4 flex flex-col items-center">
-        <img id="itemImg" alt="" class="max-w-full max-h-48 object-contain mb-3" />
+        <img id="itemImg" alt="" loading="lazy" class="max-w-full max-h-48 object-contain mb-3" />
         <h1 id="itemName" class="text-xl font-semibold text-center mb-1"></h1>
         <div id="itemShort" class="text-text-mute text-sm"></div>
         <div id="itemDims" class="text-text-mute text-xs mt-2"></div>
@@ -110,7 +110,7 @@ export async function getStaticPaths() {
       }
       document.getElementById('loading')!.classList.add('hidden');
       document.getElementById('content')!.classList.remove('hidden');
-      document.title = `${item.n} — TarkovDB`;
+      document.title = `${item.n} — Tarkov Helper`;
 
       (document.getElementById('itemImg') as HTMLImageElement).src = item.ic;
       document.getElementById('itemName')!.textContent = item.n;
@@ -169,13 +169,13 @@ export async function getStaticPaths() {
               <div class="flex items-center gap-2 flex-wrap">
                 ${b.requiredItems.map((r: any) => `
                   <a href="/item/${r.item.id}/" class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
-                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <img src="${r.item.iconLink}" loading="lazy" class="w-6 h-6 object-contain" />
                     <span>${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
                   </a>`).join('')}
                 <span class="text-text-mute">→</span>
                 ${b.rewardItems.map((r: any) => `
                   <span class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
-                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <img src="${r.item.iconLink}" loading="lazy" class="w-6 h-6 object-contain" />
                     <span class="text-accent">${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
                   </span>`).join('')}
               </div>
@@ -186,13 +186,13 @@ export async function getStaticPaths() {
               <div class="flex items-center gap-2 flex-wrap">
                 ${c.requiredItems.map((r: any) => `
                   <span class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
-                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <img src="${r.item.iconLink}" loading="lazy" class="w-6 h-6 object-contain" />
                     <span>${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
                   </span>`).join('')}
                 <span class="text-text-mute">→</span>
                 ${c.rewardItems.map((r: any) => `
                   <span class="flex items-center gap-1 px-2 py-1 bg-bg-card rounded text-xs">
-                    <img src="${r.item.iconLink}" class="w-6 h-6 object-contain" />
+                    <img src="${r.item.iconLink}" loading="lazy" class="w-6 h-6 object-contain" />
                     <span class="text-accent">${r.item.shortName}</span><span class="text-text-mute">×${r.count}</span>
                   </span>`).join('')}
               </div>

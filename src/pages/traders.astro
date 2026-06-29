@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import traders from '../data/traders.json';
 ---
-<Base title="Traders — TarkovDB" active="traders">
+<Base title="Traders — Tarkov Helper" active="traders">
   <h1 class="text-lg font-semibold mb-4">Traders</h1>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {(traders as any[]).map((t) => (

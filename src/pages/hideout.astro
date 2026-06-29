@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import hideout from '../data/hideout.json';
 ---
-<Base title="Hideout — TarkovDB" active="hideout">
+<Base title="Hideout — Tarkov Helper" active="hideout">
   <h1 class="text-lg font-semibold mb-4">Hideout Stations</h1>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     {(hideout as any[]).map((s) => (

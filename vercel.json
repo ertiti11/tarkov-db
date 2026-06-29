@@ -1,4 +1,32 @@
 {
+  "_rateLimit_recommendation": "The /api/items endpoint is an SSR function that proxies requests to api.tarkov.dev. Vercel Hobby plans do not support native rate limiting. To protect against abuse: (1) upgrade to Vercel Pro and use Vercel Firewall / WAF rules to rate-limit /api/* to ~60 req/min per IP, (2) alternatively, add Cloudflare in front with rate limiting rules, (3) the current cron-based approach (fetching once/day) already minimizes exposure since most data is served as static JSON files. If the endpoint must stay, consider adding in-memory request counting in the API handler as a basic safeguard.",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' https://assets.tarkov.dev https://*.tarkov.dev data:; font-src 'self'; connect-src 'self' https://api.tarkov.dev https://json.tarkov.dev https://eft-cdn.dvcstudiox.workers.dev https://cdn.jsdelivr.net; frame-ancestors 'none'"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    }
+  ],
   "crons": [
     {
       "path": "/api/items?mode=pve",

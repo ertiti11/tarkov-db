@@ -5,18 +5,18 @@ interface Props {
   title?: string;
   active?: string;
 }
-const { title = 'TarkovDB', active = '' } = Astro.props;
+const { title = 'Tarkov Helper', active = '' } = Astro.props;
 
 const navItems = [
-  { href: '/',        label: 'Market',  key: 'market' },
-  { href: '/guns/',   label: 'Guns',    key: 'guns' },
-  { href: '/ammo/',   label: 'Ammo',    key: 'ammo' },
-  { href: '/barter/', label: 'Barter',  key: 'barter' },
-  { href: '/craft/',  label: 'Craft',   key: 'craft' },
-  { href: '/traders/',label: 'Traders', key: 'traders' },
-  { href: '/maps/',   label: 'Maps',    key: 'maps' },
-  { href: '/quests/', label: 'Quests',  key: 'quests' },
-  { href: '/hideout/',label: 'Hideout', key: 'hideout' },
+  { href: '/',        i18nKey: 'nav.market',  key: 'market' },
+  { href: '/guns/',   i18nKey: 'nav.guns',    key: 'guns' },
+  { href: '/ammo/',   i18nKey: 'nav.ammo',    key: 'ammo' },
+  { href: '/barter/', i18nKey: 'nav.barter',  key: 'barter' },
+  { href: '/craft/',  i18nKey: 'nav.craft',   key: 'craft' },
+  { href: '/traders/',i18nKey: 'nav.traders', key: 'traders' },
+  { href: '/maps/',   i18nKey: 'nav.maps',    key: 'maps' },
+  { href: '/quests/', i18nKey: 'nav.quests',  key: 'quests' },
+  { href: '/hideout/',i18nKey: 'nav.hideout', key: 'hideout' },
 ];
 ---
 <html lang="en">
@@ -30,26 +30,71 @@ const navItems = [
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230a0a0b'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='monospace' font-size='18' font-weight='bold' fill='%23c9a44c'%3ET%3C/text%3E%3C/svg%3E" />
 </head>
 <body class="min-h-screen flex flex-col">
+
+  <!-- Global i18n system -->
+  <script is:inline>
+    window.__lang = localStorage.getItem('tdb-lang') || (navigator.language.startsWith('es') ? 'es' : 'en');
+    window.__translations = {
+      'nav.market': { en: 'Market', es: 'Mercado' },
+      'nav.guns': { en: 'Guns', es: 'Armas' },
+      'nav.ammo': { en: 'Ammo', es: 'Munición' },
+      'nav.barter': { en: 'Barter', es: 'Trueque' },
+      'nav.craft': { en: 'Craft', es: 'Fabricación' },
+      'nav.traders': { en: 'Traders', es: 'Comerciantes' },
+      'nav.maps': { en: 'Maps', es: 'Mapas' },
+      'nav.quests': { en: 'Quests', es: 'Misiones' },
+      'nav.hideout': { en: 'Hideout', es: 'Refugio' },
+      'market.filter': { en: 'Filter visible rows…', es: 'Filtrar filas visibles…' },
+      'market.allCategories': { en: 'All categories', es: 'Todas las categorías' },
+      'market.sort': { en: 'Sort:', es: 'Ordenar:' },
+      'market.sortAvg': { en: 'Avg 24h ↓', es: 'Prom 24h ↓' },
+      'market.sortLow24': { en: 'Low 24h ↓', es: 'Mín 24h ↓' },
+      'market.sortHigh24': { en: 'High 24h ↓', es: 'Máx 24h ↓' },
+      'market.sortLastLow': { en: 'Last Low ↓', es: 'Último mín ↓' },
+      'market.sortChange': { en: 'Change 48h ↓', es: 'Cambio 48h ↓' },
+      'market.sortProfit': { en: 'Trader profit ↓', es: 'Beneficio trader ↓' },
+      'market.sortName': { en: 'Name A→Z', es: 'Nombre A→Z' },
+      'market.loading': { en: 'Loading items…', es: 'Cargando objetos…' },
+      'market.items': { en: 'items', es: 'objetos' },
+      'market.livePrices': { en: 'live {mode} prices', es: 'precios {mode} en vivo' },
+      'table.item': { en: 'Item', es: 'Objeto' },
+      'table.avg24': { en: 'Avg 24h', es: 'Prom 24h' },
+      'table.low24': { en: 'Low 24h', es: 'Mín 24h' },
+      'table.high24': { en: 'High 24h', es: 'Máx 24h' },
+      'table.lastLow': { en: 'Last Low', es: 'Último mín' },
+      'table.change48': { en: 'Δ 48h', es: 'Δ 48h' },
+      'table.bestTrader': { en: 'Best Trader', es: 'Mejor trader' },
+      'search.placeholder': { en: 'Search items, traders, quests… (Ctrl+K)', es: 'Buscar objetos, traders, misiones… (Ctrl+K)' },
+      'footer.data': { en: 'Data from tarkov.dev · Not affiliated with BSG · Built with Astro', es: 'Datos de tarkov.dev · No afiliado con BSG · Hecho con Astro' },
+    };
+    window.__t = function(key) {
+      var t = window.__translations[key];
+      return t ? (t[window.__lang] || t['en'] || key) : key;
+    };
+  </script>
+
   <header class="border-b border-bg-border bg-bg-elev sticky top-0 z-40 backdrop-blur">
     <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center gap-6">
       <a href="/" class="flex items-center gap-2 group">
-        <span class="text-accent font-bold text-lg tracking-tight">⛬ TarkovDB</span>
-        <span class="text-text-mute text-xs hidden md:inline">faster.</span>
+        <span class="text-accent font-bold text-lg tracking-tight">⛬ Tarkov Helper</span>
       </a>
       <nav class="flex items-center gap-1 text-sm">
         {navItems.map((n) => (
           <a href={n.href}
+             data-i18n={n.i18nKey}
              class={`px-3 py-1.5 rounded transition-colors ${active === n.key ? 'text-accent bg-bg-card' : 'text-text-dim hover:text-text hover:bg-bg-hover'}`}>
-            {n.label}
+            {n.i18nKey.split('.')[1].charAt(0).toUpperCase() + n.i18nKey.split('.')[1].slice(1)}
           </a>
         ))}
       </nav>
       <div class="flex-1 max-w-md ml-auto relative">
         <input id="globalSearch" type="text" placeholder="Search items, traders, quests… (Ctrl+K)"
+               data-i18n-placeholder="search.placeholder"
                class="w-full bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm placeholder:text-text-mute focus:outline-none focus:border-accent" />
         <div id="searchResults" class="absolute top-full mt-1 left-0 right-0 bg-bg-elev border border-bg-border rounded shadow-2xl max-h-96 overflow-auto hidden z-50"></div>
       </div>
       <div class="flex items-center gap-2 text-xs">
+        <button id="langToggle" class="px-2 py-1 rounded bg-bg-card border border-bg-border text-text-dim hover:text-accent">EN</button>
         <button id="modeToggle" class="px-2 py-1 rounded bg-bg-card border border-bg-border text-text-dim hover:text-accent" data-mode="pve">PVE</button>
       </div>
     </div>
@@ -59,12 +104,43 @@ const navItems = [
     <slot />
   </main>
 
-  <footer class="border-t border-bg-border py-4 text-center text-xs text-text-mute">
+  <footer id="siteFooter" class="border-t border-bg-border py-4 text-center text-xs text-text-mute">
     Data from <a href="https://tarkov.dev" class="hover:text-accent">tarkov.dev</a> · Not affiliated with BSG · Built with Astro
   </footer>
 
   <script>
-    // Global search with debounce + Fuse-lite
+    // --- i18n: apply translations to data-i18n elements ---
+    function applyI18n() {
+      const t = (window as any).__t;
+      if (!t) return;
+      document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+        el.textContent = t(el.dataset.i18n);
+      });
+      document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach((el) => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
+      });
+      // Footer
+      const footer = document.getElementById('siteFooter');
+      if (footer) {
+        const footerText = t('footer.data');
+        footer.innerHTML = footerText.replace('tarkov.dev', '<a href="https://tarkov.dev" class="hover:text-accent">tarkov.dev</a>');
+      }
+    }
+
+    // --- Language toggle ---
+    const langBtn = document.getElementById('langToggle') as HTMLButtonElement;
+    const currentLang = (window as any).__lang || 'en';
+    langBtn.textContent = currentLang.toUpperCase();
+    langBtn.addEventListener('click', () => {
+      const next = currentLang === 'en' ? 'es' : 'en';
+      localStorage.setItem('tdb-lang', next);
+      window.location.reload();
+    });
+
+    // Apply i18n on load
+    applyI18n();
+
+    // --- Global search with debounce ---
     let items: any[] = [];
     let fuseReady = false;
     const input = document.getElementById('globalSearch') as HTMLInputElement;
@@ -136,7 +212,7 @@ const navItems = [
       }
     });
 
-    // Game mode toggle (persisted)
+    // --- Game mode toggle (persisted) ---
     const modeBtn = document.getElementById('modeToggle') as HTMLButtonElement;
     const savedMode = localStorage.getItem('tdb-mode') || 'pve';
     modeBtn.textContent = savedMode.toUpperCase();

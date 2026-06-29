@@ -7,7 +7,7 @@ export async function getStaticPaths() {
   return (data.weapons as any[]).map((w) => ({ params: { name: w.id } }));
 }
 ---
-<Base title="FORGE - TarkovDB" active="guns">
+<Base title="FORGE - Tarkov Helper" active="guns">
   <a href="/guns/" class="text-text-mute hover:text-accent text-sm mb-3 inline-block">← Guns</a>
 
   <div id="loading" class="text-text-mute py-12 text-center">Cargando arma...</div>
@@ -27,7 +27,7 @@ export async function getStaticPaths() {
         </div>
 
         <div class="flex items-center gap-3 mb-4">
-          <img id="wImg" alt="" class="w-32 h-20 object-contain border border-bg-border bg-bg-card rounded p-1" />
+          <img id="wImg" alt="" loading="lazy" class="w-32 h-20 object-contain border border-bg-border bg-bg-card rounded p-1" />
           <div class="min-w-0">
             <div class="text-accent text-xs font-bold tracking-wide">BASIC / ADVANCED <span class="text-[9px] text-text-mute">soon</span></div>
             <h1 id="wName" class="text-lg font-semibold leading-tight"></h1>
@@ -371,7 +371,7 @@ export async function getStaticPaths() {
 
       document.getElementById('loading')!.classList.add('hidden');
       document.getElementById('content')!.classList.remove('hidden');
-      document.title = `${weapon.n} - FORGE - TarkovDB`;
+      document.title = `${weapon.n} - FORGE - Tarkov Helper`;
 
       const wImg = document.getElementById('wImg') as HTMLImageElement;
       wImg.src = weaponImage(weapon);
@@ -858,7 +858,7 @@ export async function getStaticPaths() {
         `<div class="flex flex-wrap gap-2 ${justify} items-end">${arr.map(tile).join('')}</div>`;
 
       const weaponTile = `<div class="flex flex-col items-center px-4">
-        <img src="${weapon.ic}" alt="" class="object-contain" style="max-height:88px" />
+        <img src="${weapon.ic}" alt="" loading="lazy" class="object-contain" style="max-height:88px" />
         <div class="text-sm font-semibold mt-1 text-center">${weapon.sn}</div>
         <div class="text-[11px] text-text-mute text-center">ergo <span class="text-text-dim">${b.ergo}</span> · recoil V <span class="text-text-dim">${b.recoilV}</span></div>
         <div class="text-[11px] text-accent text-num">${fmtRub(b.price)}</div>

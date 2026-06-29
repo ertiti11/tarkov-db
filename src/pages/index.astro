@@ -1,24 +1,25 @@
 ---
 import Base from '../layouts/Base.astro';
 ---
-<Base title="Market — TarkovDB" active="market">
+<Base title="Market — Tarkov Helper" active="market">
   <div class="flex flex-wrap items-center gap-2 mb-3">
     <div class="flex items-center gap-2 flex-1 min-w-[280px]">
       <input id="filter" type="text" placeholder="Filter visible rows…"
+             data-i18n-placeholder="market.filter"
              class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-72 focus:outline-none focus:border-accent" />
       <select id="catFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
-        <option value="">All categories</option>
+        <option value="" data-i18n="market.allCategories">All categories</option>
       </select>
       <div class="flex items-center gap-1 text-xs">
-        <span class="text-text-mute">Sort:</span>
+        <span class="text-text-mute" data-i18n="market.sort">Sort:</span>
         <select id="sortBy" class="bg-bg-card border border-bg-border rounded px-2 py-1 text-sm">
-          <option value="a24">Avg 24h ↓</option>
-          <option value="l24">Low 24h ↓</option>
-          <option value="h24">High 24h ↓</option>
-          <option value="llp">Last Low ↓</option>
-          <option value="ch">Change 48h ↓</option>
-          <option value="profit">Trader profit ↓</option>
-          <option value="n">Name A→Z</option>
+          <option value="a24" data-i18n="market.sortAvg">Avg 24h ↓</option>
+          <option value="l24" data-i18n="market.sortLow24">Low 24h ↓</option>
+          <option value="h24" data-i18n="market.sortHigh24">High 24h ↓</option>
+          <option value="llp" data-i18n="market.sortLastLow">Last Low ↓</option>
+          <option value="ch" data-i18n="market.sortChange">Change 48h ↓</option>
+          <option value="profit" data-i18n="market.sortProfit">Trader profit ↓</option>
+          <option value="n" data-i18n="market.sortName">Name A→Z</option>
         </select>
       </div>
     </div>
@@ -28,13 +29,13 @@ import Base from '../layouts/Base.astro';
   <div class="border border-bg-border rounded bg-bg-elev overflow-hidden">
     <div class="grid grid-cols-[56px_1fr_100px_90px_90px_100px_100px_140px_80px] text-xs text-text-mute border-b border-bg-border bg-bg-card">
       <div class="px-2 py-2"></div>
-      <div class="px-2 py-2">Item</div>
-      <div class="px-2 py-2 text-right">Avg 24h</div>
-      <div class="px-2 py-2 text-right">Low 24h</div>
-      <div class="px-2 py-2 text-right">High 24h</div>
-      <div class="px-2 py-2 text-right">Last Low</div>
-      <div class="px-2 py-2 text-right">Δ 48h</div>
-      <div class="px-2 py-2 text-right">Best Trader</div>
+      <div class="px-2 py-2" data-i18n="table.item">Item</div>
+      <div class="px-2 py-2 text-right" data-i18n="table.avg24">Avg 24h</div>
+      <div class="px-2 py-2 text-right" data-i18n="table.low24">Low 24h</div>
+      <div class="px-2 py-2 text-right" data-i18n="table.high24">High 24h</div>
+      <div class="px-2 py-2 text-right" data-i18n="table.lastLow">Last Low</div>
+      <div class="px-2 py-2 text-right" data-i18n="table.change48">Δ 48h</div>
+      <div class="px-2 py-2 text-right" data-i18n="table.bestTrader">Best Trader</div>
       <div class="px-2 py-2 text-center">7d</div>
     </div>
     <div id="virtualScroller" class="overflow-auto" style="height: calc(100vh - 220px); position: relative;">
@@ -50,10 +51,16 @@ import Base from '../layouts/Base.astro';
       sf?: Array<{ v: string; p: number; pr: number; c: string }>;
     };
 
+    const __t = (window as any).__t || ((k: string) => k);
+
     const ROW_H = 56;
     let items: Item[] = [];
     let view: Item[] = [];
-    let mode = (localStorage.getItem('tdb-mode') || 'pve') as 'pve' | 'pvp';
+    // BUG FIX: Do NOT capture mode in a variable at init time.
+    // Always read the current mode from localStorage via getMode().
+    function getMode(): 'pve' | 'pvp' {
+      return (localStorage.getItem('tdb-mode') || 'pve') as 'pve' | 'pvp';
+    }
 
     const scroller = document.getElementById('virtualScroller') as HTMLDivElement;
     const spacer   = document.getElementById('virtualSpacer') as HTMLDivElement;
@@ -61,6 +68,27 @@ import Base from '../layouts/Base.astro';
     const filterEl = document.getElementById('filter') as HTMLInputElement;
     const catEl    = document.getElementById('catFilter') as HTMLSelectElement;
     const sortEl   = document.getElementById('sortBy') as HTMLSelectElement;
+
+    // Apply i18n to market-specific elements
+    function applyMarketI18n() {
+      // Filter placeholder
+      filterEl.placeholder = __t('market.filter');
+      // Category filter first option
+      const catFirstOpt = catEl.querySelector('option[value=""]');
+      if (catFirstOpt) catFirstOpt.textContent = __t('market.allCategories');
+      // Sort label and options
+      document.querySelectorAll<HTMLElement>('#sortBy option').forEach((opt) => {
+        if (opt.dataset.i18n) opt.textContent = __t(opt.dataset.i18n);
+      });
+      // Table headers
+      document.querySelectorAll<HTMLElement>('[data-i18n]').forEach((el) => {
+        if (el.dataset.i18n) el.textContent = __t(el.dataset.i18n);
+      });
+      // Placeholders
+      document.querySelectorAll<HTMLInputElement>('[data-i18n-placeholder]').forEach((el) => {
+        if (el.dataset.i18nPlaceholder) el.placeholder = __t(el.dataset.i18nPlaceholder);
+      });
+    }
 
     const fmtRub = (n?: number | null) => (n == null || !isFinite(n)) ? '—' : n.toLocaleString() + ' ₽';
     function bestProfit(it: Item) {
@@ -72,7 +100,7 @@ import Base from '../layouts/Base.astro';
     const chClass = (ch?: number) => !ch ? 'flat' : ch > 0 ? 'up' : 'down';
 
     async function loadItems() {
-      status.textContent = 'Loading items…';
+      status.textContent = __t('market.loading');
       const res = await fetch('/data/items.json');
       items = await res.json();
       const cats = new Set<string>();
@@ -80,12 +108,14 @@ import Base from '../layouts/Base.astro';
       catEl.insertAdjacentHTML('beforeend',
         Array.from(cats).sort().map((c) => `<option value="${c}">${c.replace(/-/g, ' ')}</option>`).join('')
       );
-      status.textContent = `${items.length.toLocaleString()} items`;
+      status.textContent = `${items.length.toLocaleString()} ${__t('market.items')}`;
       applyFilters();
       refreshLive();
     }
 
     async function refreshLive() {
+      // Always read current mode from localStorage
+      const mode = getMode();
       // Try our API endpoint first (cached 1h by Vercel CDN)
       try {
         const apiRes = await fetch(`/api/items?mode=${mode}`);
@@ -106,7 +136,8 @@ import Base from '../layouts/Base.astro';
               if (p.sf?.length) it.sf = p.sf;
               if (p.bf?.length) it.bf = p.bf;
             }
-            status.textContent = `${items.length.toLocaleString()} items · live ${mode.toUpperCase()} prices`;
+            const liveText = __t('market.livePrices').replace('{mode}', mode.toUpperCase());
+            status.textContent = `${items.length.toLocaleString()} ${__t('market.items')} · ${liveText}`;
             applyFilters();
             return;
           }
@@ -129,7 +160,8 @@ import Base from '../layouts/Base.astro';
           if (lv.avg24hPrice) it.a24 = lv.avg24hPrice;
           if (lv.lastLowPrice) it.llp = lv.lastLowPrice;
         }
-        status.textContent = `${items.length.toLocaleString()} items · live ${mode.toUpperCase()} prices`;
+        const liveText = __t('market.livePrices').replace('{mode}', mode.toUpperCase());
+        status.textContent = `${items.length.toLocaleString()} ${__t('market.items')} · ${liveText}`;
         applyFilters();
       } catch (e) { console.warn('live prices:', e); }
     }
@@ -157,6 +189,7 @@ import Base from '../layouts/Base.astro';
     }
 
     async function fetchSpark(id: string): Promise<number[] | null> {
+      const mode = getMode();
       const k = `spark:${mode}:${id}`;
       const cached = sessionStorage.getItem(k);
       if (cached) try { return JSON.parse(cached); } catch {}
@@ -247,9 +280,15 @@ import Base from '../layouts/Base.astro';
     });
     catEl.addEventListener('change', applyFilters);
     sortEl.addEventListener('change', applyFilters);
-    window.addEventListener('mode-change', (e: any) => {
-      mode = e.detail; sessionStorage.clear(); refreshLive();
+    window.addEventListener('mode-change', (_e: any) => {
+      // Mode already updated in localStorage by the toggle button.
+      // Clear session cache (sparklines are mode-specific) and re-fetch live prices.
+      sessionStorage.clear();
+      refreshLive();
     });
+
+    // Apply i18n and load
+    applyMarketI18n();
     loadItems();
   </script>
 </Base>
