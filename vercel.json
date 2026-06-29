@@ -1,5 +1,4 @@
 {
-  "_rateLimit_recommendation": "The /api/items endpoint is an SSR function that proxies requests to api.tarkov.dev. Vercel Hobby plans do not support native rate limiting. To protect against abuse: (1) upgrade to Vercel Pro and use Vercel Firewall / WAF rules to rate-limit /api/* to ~60 req/min per IP, (2) alternatively, add Cloudflare in front with rate limiting rules, (3) the current cron-based approach (fetching once/day) already minimizes exposure since most data is served as static JSON files. If the endpoint must stay, consider adding in-memory request counting in the API handler as a basic safeguard.",
   "headers": [
     {
       "source": "/(.*)",
