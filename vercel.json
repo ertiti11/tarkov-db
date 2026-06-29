@@ -5,7 +5,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' https://assets.tarkov.dev https://*.tarkov.dev data:; font-src 'self'; connect-src 'self' https://api.tarkov.dev https://json.tarkov.dev https://eft-cdn.dvcstudiox.workers.dev https://cdn.jsdelivr.net; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' https://assets.tarkov.dev https://*.tarkov.dev data:; font-src 'self'; connect-src 'self' https://api.tarkov.dev https://json.tarkov.dev https://eft-cdn.dvcstudiox.workers.dev https://cdn.jsdelivr.net https://va.vercel-scripts.com; frame-ancestors 'none'"
         },
         {
           "key": "X-Content-Type-Options",
