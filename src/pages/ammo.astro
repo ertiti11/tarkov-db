@@ -14,9 +14,9 @@ for (const cal of Object.keys(byCaliber)) {
 const calibers = Object.keys(byCaliber).sort();
 ---
 <Base title="Ammo — Tarkov Helper" active="ammo">
-  <div class="flex items-center gap-2 mb-3">
+  <div class="flex flex-wrap items-center gap-2 mb-3">
     <input id="filter" type="text" placeholder="Filter by name…"
-           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:border-accent" />
     <select id="calFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
       <option value="">All calibers</option>
       {calibers.map((c) => <option value={c}>{c.replace('Caliber', '').replace(/([A-Z])/g, ' $1').trim()}</option>)}
@@ -28,7 +28,8 @@ const calibers = Object.keys(byCaliber).sort();
       <h2 class="text-sm font-semibold mb-2 text-accent uppercase tracking-wide">
         {cal.replace('Caliber', '').replace(/([A-Z])/g, ' $1').trim()}
       </h2>
-      <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+      <div class="border border-bg-border rounded overflow-x-auto bg-bg-elev">
+        <div class="min-w-[650px]">
         <div class="grid grid-cols-[40px_1fr_70px_70px_70px_70px_70px_90px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
           <div class="px-2 py-1.5"></div>
           <div class="px-2 py-1.5">Name</div>
@@ -54,6 +55,7 @@ const calibers = Object.keys(byCaliber).sort();
             <div class="flex items-center justify-end px-2 text-num text-accent">{(a.item.avg24hPrice || a.item.lastLowPrice || 0).toLocaleString()} ₽</div>
           </div>
         ))}
+        </div>
       </div>
     </section>
   ))}

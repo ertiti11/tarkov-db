@@ -3,11 +3,11 @@ import Base from '../layouts/Base.astro';
 ---
 <Base title="Market — Tarkov Helper" active="market">
   <div class="flex flex-wrap items-center gap-2 mb-3">
-    <div class="flex items-center gap-2 flex-1 min-w-[280px]">
+    <div class="flex flex-wrap items-center gap-2 flex-1 min-w-0">
       <input id="filter" type="text" placeholder="Filter visible rows…"
              data-i18n-placeholder="market.filter"
-             class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-72 focus:outline-none focus:border-accent" />
-      <select id="catFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
+             class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-full sm:w-72 focus:outline-none focus:border-accent" />
+      <select id="catFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm flex-1 sm:flex-none">
         <option value="" data-i18n="market.allCategories">All categories</option>
       </select>
       <div class="flex items-center gap-1 text-xs">
@@ -23,23 +23,25 @@ import Base from '../layouts/Base.astro';
         </select>
       </div>
     </div>
-    <div id="status" class="text-xs text-text-mute"></div>
+    <div id="status" class="text-xs text-text-mute w-full sm:w-auto"></div>
   </div>
 
-  <div class="border border-bg-border rounded bg-bg-elev overflow-hidden">
-    <div class="grid grid-cols-[56px_1fr_100px_90px_90px_100px_100px_140px_80px] text-xs text-text-mute border-b border-bg-border bg-bg-card">
-      <div class="px-2 py-2"></div>
-      <div class="px-2 py-2" data-i18n="table.item">Item</div>
-      <div class="px-2 py-2 text-right" data-i18n="table.avg24">Avg 24h</div>
-      <div class="px-2 py-2 text-right" data-i18n="table.low24">Low 24h</div>
-      <div class="px-2 py-2 text-right" data-i18n="table.high24">High 24h</div>
-      <div class="px-2 py-2 text-right" data-i18n="table.lastLow">Last Low</div>
-      <div class="px-2 py-2 text-right" data-i18n="table.change48">Δ 48h</div>
-      <div class="px-2 py-2 text-right" data-i18n="table.bestTrader">Best Trader</div>
-      <div class="px-2 py-2 text-center">7d</div>
-    </div>
-    <div id="virtualScroller" class="overflow-auto" style="height: calc(100vh - 220px); position: relative;">
-      <div id="virtualSpacer" style="position: relative;"></div>
+  <div class="border border-bg-border rounded bg-bg-elev overflow-x-auto">
+    <div class="min-w-[900px]">
+      <div class="grid grid-cols-[56px_1fr_100px_90px_90px_100px_100px_140px_80px] text-xs text-text-mute border-b border-bg-border bg-bg-card">
+        <div class="px-2 py-2"></div>
+        <div class="px-2 py-2" data-i18n="table.item">Item</div>
+        <div class="px-2 py-2 text-right" data-i18n="table.avg24">Avg 24h</div>
+        <div class="px-2 py-2 text-right" data-i18n="table.low24">Low 24h</div>
+        <div class="px-2 py-2 text-right" data-i18n="table.high24">High 24h</div>
+        <div class="px-2 py-2 text-right" data-i18n="table.lastLow">Last Low</div>
+        <div class="px-2 py-2 text-right" data-i18n="table.change48">Δ 48h</div>
+        <div class="px-2 py-2 text-right" data-i18n="table.bestTrader">Best Trader</div>
+        <div class="px-2 py-2 text-center">7d</div>
+      </div>
+      <div id="virtualScroller" class="overflow-auto" style="height: calc(100vh - 220px); position: relative;">
+        <div id="virtualSpacer" style="position: relative;"></div>
+      </div>
     </div>
   </div>
 

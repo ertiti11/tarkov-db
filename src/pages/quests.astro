@@ -12,7 +12,7 @@ const traders = Array.from(new Set(sorted.map((t) => t.trader?.normalizedName).f
 <Base title="Quests — Tarkov Helper" active="quests">
   <div class="flex items-center gap-2 mb-3 flex-wrap">
     <input id="filter" type="text" placeholder="Filter by name…"
-           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:border-accent" />
     <select id="traderFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
       <option value="">All traders</option>
       {traders.map((t) => <option value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
@@ -22,7 +22,8 @@ const traders = Array.from(new Set(sorted.map((t) => t.trader?.normalizedName).f
     <div class="text-xs text-text-mute ml-auto">{sorted.length} quests</div>
   </div>
 
-  <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+  <div class="border border-bg-border rounded overflow-x-auto bg-bg-elev">
+    <div class="min-w-[700px]">
     <div class="grid grid-cols-[150px_1fr_120px_60px_80px_80px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
       <div class="px-2 py-2">Trader</div>
       <div class="px-2 py-2">Quest</div>
@@ -50,6 +51,7 @@ const traders = Array.from(new Set(sorted.map((t) => t.trader?.normalizedName).f
           </div>
         </a>
       ))}
+    </div>
     </div>
   </div>
 

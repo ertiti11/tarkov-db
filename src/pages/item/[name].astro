@@ -39,10 +39,10 @@ export async function getStaticPaths() {
       <script id="forgeIds" type="application/json" set:html={JSON.stringify(forgeIds)}></script>
 
       <div class="bg-bg-elev border border-bg-border rounded p-4">
-        <div id="stats" class="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4"></div>
-        <div class="mb-2 flex items-center justify-between">
+        <div id="stats" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-4"></div>
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h3 class="text-sm text-text-dim">Price history</h3>
-          <div class="flex gap-1 text-xs">
+          <div class="flex flex-wrap gap-1 text-xs">
             <button data-range="1"   class="rng-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">24h</button>
             <button data-range="7"   class="rng-btn px-2 py-0.5 rounded bg-bg-card border border-bg-border">7d</button>
             <button data-range="30"  class="rng-btn px-2 py-0.5 rounded bg-accent text-bg border border-accent">30d</button>

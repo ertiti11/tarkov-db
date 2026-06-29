@@ -20,7 +20,7 @@ const stations = Array.from(new Set(annotated.map((c) => c.station.normalizedNam
 <Base title="Craft — Tarkov Helper" active="craft">
   <div class="flex items-center gap-2 mb-3 flex-wrap">
     <input id="filter" type="text" placeholder="Filter by item name…"
-           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:border-accent" />
     <select id="stationFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
       <option value="">All stations</option>
       {stations.map((s) => <option value={s}>{s.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>)}
@@ -34,7 +34,8 @@ const stations = Array.from(new Set(annotated.map((c) => c.station.normalizedNam
     <div class="text-xs text-text-mute ml-auto">{annotated.length} crafts</div>
   </div>
 
-  <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+  <div class="border border-bg-border rounded overflow-x-auto bg-bg-elev">
+    <div class="min-w-[850px]">
     <div class="grid grid-cols-[170px_1fr_40px_1fr_90px_100px_100px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
       <div class="px-2 py-2">Station · LV · Dur.</div>
       <div class="px-2 py-2">Cost</div>
@@ -82,6 +83,7 @@ const stations = Array.from(new Set(annotated.map((c) => c.station.normalizedNam
           <div class={`px-2 py-2 text-right text-num ${c._pph > 0 ? 'up' : 'down'}`}>{Math.round(c._pph).toLocaleString()}</div>
         </div>
       )})}
+    </div>
     </div>
   </div>
 

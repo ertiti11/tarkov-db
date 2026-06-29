@@ -75,11 +75,14 @@ const navItems = [
   </script>
 
   <header class="border-b border-bg-border bg-bg-elev sticky top-0 z-40 backdrop-blur">
-    <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center gap-6">
-      <a href="/" class="flex items-center gap-2 group">
+    <div class="max-w-[1600px] mx-auto px-4 h-14 flex items-center gap-3 md:gap-6">
+      <a href="/" class="flex items-center gap-2 group shrink-0">
         <span class="text-accent font-bold text-lg tracking-tight">⛬ Tarkov Helper</span>
       </a>
-      <nav class="flex items-center gap-1 text-sm">
+      <button id="menuToggle" class="md:hidden p-1.5 rounded text-text-dim hover:text-text hover:bg-bg-hover" aria-label="Menu">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <nav id="mainNav" class="hidden md:flex items-center gap-1 text-sm">
         {navItems.map((n) => (
           <a href={n.href}
              data-i18n={n.i18nKey}
@@ -88,16 +91,34 @@ const navItems = [
           </a>
         ))}
       </nav>
-      <div class="flex-1 max-w-md ml-auto relative">
+      <div class="flex-1 max-w-md ml-auto relative hidden sm:block">
         <input id="globalSearch" type="text" placeholder="Search items, traders, quests… (Ctrl+K)"
                data-i18n-placeholder="search.placeholder"
                class="w-full bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm placeholder:text-text-mute focus:outline-none focus:border-accent" />
         <div id="searchResults" class="absolute top-full mt-1 left-0 right-0 bg-bg-elev border border-bg-border rounded shadow-2xl max-h-96 overflow-auto hidden z-50"></div>
       </div>
-      <div class="flex items-center gap-2 text-xs">
+      <div class="flex items-center gap-2 text-xs shrink-0">
         <button id="langToggle" class="px-2 py-1 rounded bg-bg-card border border-bg-border text-text-dim hover:text-accent">EN</button>
         <button id="modeToggle" class="px-2 py-1 rounded bg-bg-card border border-bg-border text-text-dim hover:text-accent" data-mode="pve">PVE</button>
       </div>
+    </div>
+    <!-- Mobile nav dropdown -->
+    <div id="mobileNav" class="hidden md:hidden border-t border-bg-border bg-bg-elev px-4 py-2">
+      <div class="relative mb-2 sm:hidden">
+        <input id="globalSearchMobile" type="text" placeholder="Search items, traders, quests…"
+               data-i18n-placeholder="search.placeholder"
+               class="w-full bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm placeholder:text-text-mute focus:outline-none focus:border-accent" />
+        <div id="searchResultsMobile" class="absolute top-full mt-1 left-0 right-0 bg-bg-elev border border-bg-border rounded shadow-2xl max-h-96 overflow-auto hidden z-50"></div>
+      </div>
+      <nav class="flex flex-wrap gap-1 text-sm">
+        {navItems.map((n) => (
+          <a href={n.href}
+             data-i18n={n.i18nKey}
+             class={`px-3 py-1.5 rounded transition-colors ${active === n.key ? 'text-accent bg-bg-card' : 'text-text-dim hover:text-text hover:bg-bg-hover'}`}>
+            {n.i18nKey.split('.')[1].charAt(0).toUpperCase() + n.i18nKey.split('.')[1].slice(1)}
+          </a>
+        ))}
+      </nav>
     </div>
   </header>
 
@@ -145,11 +166,20 @@ const navItems = [
     // Apply i18n on load
     applyI18n();
 
+    // --- Mobile menu toggle ---
+    const menuBtn = document.getElementById('menuToggle') as HTMLButtonElement;
+    const mobileNav = document.getElementById('mobileNav') as HTMLDivElement;
+    menuBtn?.addEventListener('click', () => {
+      mobileNav.classList.toggle('hidden');
+    });
+
     // --- Global search with debounce ---
     let items: any[] = [];
     let fuseReady = false;
     const input = document.getElementById('globalSearch') as HTMLInputElement;
     const results = document.getElementById('searchResults') as HTMLDivElement;
+    const inputMobile = document.getElementById('globalSearchMobile') as HTMLInputElement;
+    const resultsMobile = document.getElementById('searchResultsMobile') as HTMLDivElement;
 
     async function loadIndex() {
       if (fuseReady) return;
@@ -170,40 +200,44 @@ const navItems = [
       return -1;
     }
 
-    let timer: any;
-    input?.addEventListener('input', () => {
-      clearTimeout(timer);
-      timer = setTimeout(async () => {
-        const q = input.value.trim().toLowerCase();
-        if (!q) { results.classList.add('hidden'); return; }
-        await loadIndex();
-        const hits: any[] = [];
-        for (const it of items) {
-          const s = score(q, it);
-          if (s >= 0) hits.push({ ...it, _s: s });
-          if (hits.length > 200) break;
+    function setupSearch(inp: HTMLInputElement | null, res: HTMLDivElement | null) {
+      if (!inp || !res) return;
+      let timer: any;
+      inp.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+          const q = inp.value.trim().toLowerCase();
+          if (!q) { res.classList.add('hidden'); return; }
+          await loadIndex();
+          const hits: any[] = [];
+          for (const it of items) {
+            const s = score(q, it);
+            if (s >= 0) hits.push({ ...it, _s: s });
+            if (hits.length > 200) break;
+          }
+          hits.sort((a, b) => a._s - b._s);
+          const top = hits.slice(0, 12);
+          res.innerHTML = top.map((it) => `
+            <a href="/item/${it.nn}/" class="flex items-center gap-3 px-3 py-2 hover:bg-bg-hover border-b border-bg-border last:border-0">
+              <img src="${it.ic}" alt="" loading="lazy" class="w-8 h-8 object-contain" />
+              <div class="flex-1 min-w-0">
+                <div class="text-sm truncate">${it.n}</div>
+                <div class="text-xs text-text-mute">${it.sn || ''}</div>
+              </div>
+              <div class="text-num text-sm text-accent">${(it.a24 || it.llp || it.bp || 0).toLocaleString()} ₽</div>
+            </a>
+          `).join('');
+          res.classList.toggle('hidden', top.length === 0);
+        }, 80);
+      });
+      document.addEventListener('click', (e) => {
+        if (!res.contains(e.target as Node) && e.target !== inp) {
+          res.classList.add('hidden');
         }
-        hits.sort((a, b) => a._s - b._s);
-        const top = hits.slice(0, 12);
-        results.innerHTML = top.map((it) => `
-          <a href="/item/${it.nn}/" class="flex items-center gap-3 px-3 py-2 hover:bg-bg-hover border-b border-bg-border last:border-0">
-            <img src="${it.ic}" alt="" loading="lazy" class="w-8 h-8 object-contain" />
-            <div class="flex-1 min-w-0">
-              <div class="text-sm truncate">${it.n}</div>
-              <div class="text-xs text-text-mute">${it.sn || ''}</div>
-            </div>
-            <div class="text-num text-sm text-accent">${(it.a24 || it.llp || it.bp || 0).toLocaleString()} ₽</div>
-          </a>
-        `).join('');
-        results.classList.toggle('hidden', top.length === 0);
-      }, 80);
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!results.contains(e.target as Node) && e.target !== input) {
-        results.classList.add('hidden');
-      }
-    });
+      });
+    }
+    setupSearch(input, results);
+    setupSearch(inputMobile, resultsMobile);
 
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {

@@ -22,7 +22,7 @@ const traders = Array.from(new Set(annotated.map((b) => b.trader.normalizedName)
 <Base title="Barter — Tarkov Helper" active="barter">
   <div class="flex items-center gap-2 mb-3 flex-wrap">
     <input id="filter" type="text" placeholder="Filter by item name…"
-           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-accent" />
+           class="bg-bg-card border border-bg-border rounded px-3 py-1.5 text-sm w-full sm:w-64 focus:outline-none focus:border-accent" />
     <select id="traderFilter" class="bg-bg-card border border-bg-border rounded px-2 py-1.5 text-sm">
       <option value="">All traders</option>
       {traders.map((t) => <option value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
@@ -36,7 +36,8 @@ const traders = Array.from(new Set(annotated.map((b) => b.trader.normalizedName)
     <div class="text-xs text-text-mute ml-auto">{annotated.length} barters</div>
   </div>
 
-  <div class="border border-bg-border rounded overflow-hidden bg-bg-elev">
+  <div class="border border-bg-border rounded overflow-x-auto bg-bg-elev">
+    <div class="min-w-[850px]">
     <div class="grid grid-cols-[140px_1fr_40px_1fr_110px_110px_110px] text-xs text-text-mute bg-bg-card border-b border-bg-border">
       <div class="px-2 py-2">Trader · LV</div>
       <div class="px-2 py-2">Cost</div>
@@ -77,6 +78,7 @@ const traders = Array.from(new Set(annotated.map((b) => b.trader.normalizedName)
           <div class={`px-2 py-2 text-right text-num font-semibold ${b._profit > 0 ? 'up' : 'down'}`}>{b._profit > 0 ? '+' : ''}{Math.round(b._profit).toLocaleString()}</div>
         </div>
       ))}
+    </div>
     </div>
   </div>
 
