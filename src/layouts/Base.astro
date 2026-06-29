@@ -1,5 +1,6 @@
 ---
 import '../styles/globals.css';
+import Analytics from '@vercel/analytics/astro';
 
 interface Props {
   title?: string;
@@ -234,5 +235,6 @@ const navItems = [
       }, 300);
     });
   </script>
+  <Analytics />
 </body>
 </html>
