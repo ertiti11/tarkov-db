@@ -127,14 +127,18 @@ const navItems = [
       }
     }
 
-    // --- Language toggle ---
+    // --- Language toggle (instant, no reload) ---
     const langBtn = document.getElementById('langToggle') as HTMLButtonElement;
-    const currentLang = (window as any).__lang || 'en';
-    langBtn.textContent = currentLang.toUpperCase();
+    langBtn.textContent = ((window as any).__lang || 'en').toUpperCase();
     langBtn.addEventListener('click', () => {
-      const next = currentLang === 'en' ? 'es' : 'en';
+      const cur = (window as any).__lang || 'en';
+      const next = cur === 'en' ? 'es' : 'en';
+      (window as any).__lang = next;
       localStorage.setItem('tdb-lang', next);
-      window.location.reload();
+      langBtn.textContent = next.toUpperCase();
+      applyI18n();
+      // Notify page-level scripts (e.g. market) to re-apply their i18n
+      window.dispatchEvent(new CustomEvent('lang-change', { detail: next }));
     });
 
     // Apply i18n on load
@@ -212,17 +216,22 @@ const navItems = [
       }
     });
 
-    // --- Game mode toggle (persisted) ---
+    // --- Game mode toggle (debounced to prevent rapid switching issues) ---
     const modeBtn = document.getElementById('modeToggle') as HTMLButtonElement;
     const savedMode = localStorage.getItem('tdb-mode') || 'pve';
     modeBtn.textContent = savedMode.toUpperCase();
     modeBtn.dataset.mode = savedMode;
+    let modeDebounce: any;
     modeBtn.addEventListener('click', () => {
       const next = modeBtn.dataset.mode === 'pve' ? 'pvp' : 'pve';
       modeBtn.dataset.mode = next;
       modeBtn.textContent = next.toUpperCase();
       localStorage.setItem('tdb-mode', next);
-      window.dispatchEvent(new CustomEvent('mode-change', { detail: next }));
+      // Debounce: wait 300ms before dispatching to avoid stacking fetches
+      clearTimeout(modeDebounce);
+      modeDebounce = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('mode-change', { detail: next }));
+      }, 300);
     });
   </script>
 </body>

@@ -90,26 +90,38 @@ const stations = Array.from(new Set(annotated.map((c) => c.station.normalizedNam
     const sSel = document.getElementById('stationFilter') as HTMLSelectElement;
     const oSel = document.getElementById('sortBy') as HTMLSelectElement;
     const container = document.getElementById('rows')!;
-    function apply() {
+    let lastSort = '';
+
+    function applyFilter() {
       const q = filter.value.trim().toLowerCase();
       const st = sSel.value;
-      const rows = Array.from(container.querySelectorAll<HTMLElement>('.craft-row'));
+      const rows = container.querySelectorAll<HTMLElement>('.craft-row');
       rows.forEach((r) => {
         const okName = !q || (r.dataset.name || '').includes(q);
         const okSt = !st || r.dataset.station === st;
         r.style.display = (okName && okSt) ? '' : 'none';
       });
+    }
+
+    function applySort() {
       const key = oSel.value;
+      if (key === lastSort) return;
+      lastSort = key;
+      const rows = Array.from(container.querySelectorAll<HTMLElement>('.craft-row'));
       const asc = key === 'duration';
-      const sorted = rows.slice().sort((a, b) => {
+      rows.sort((a, b) => {
         const av = parseFloat(a.dataset[key as any] || '0');
         const bv = parseFloat(b.dataset[key as any] || '0');
         return asc ? av - bv : bv - av;
       });
-      sorted.forEach((r) => container.appendChild(r));
+      const frag = document.createDocumentFragment();
+      rows.forEach((r) => frag.appendChild(r));
+      container.appendChild(frag);
     }
-    filter.addEventListener('input', apply);
-    sSel.addEventListener('change', apply);
-    oSel.addEventListener('change', apply);
+
+    let _t: any;
+    filter.addEventListener('input', () => { clearTimeout(_t); _t = setTimeout(applyFilter, 80); });
+    sSel.addEventListener('change', applyFilter);
+    oSel.addEventListener('change', () => { applySort(); applyFilter(); });
   </script>
 </Base>
